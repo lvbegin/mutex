@@ -110,8 +110,8 @@ bool SharedMutex::try_lock() {
 	if (false == mutex.try_lock())
 		return false;
 	const auto canKeepMutex = (0 == nbSharedLocked);
-		if (!canKeepMutex)
-			mutex.unlock();
+	if (!canKeepMutex)
+		mutex.unlock();
 	return canKeepMutex;
 }
 
@@ -130,7 +130,6 @@ void SharedMutex::waitForLockShared(std::unique_lock<std::mutex> &lock)
 	accessQueue->wait(lock, *queueElem, [this](){ return accessQueue->headMatchesThreadId(); } );
 	accessQueue->removeFirstElementFromWaitingList();
 	accessQueue->notifyFirstElem();
-
 }
 
 void SharedMutex::unlock_shared() {
@@ -151,8 +150,6 @@ bool SharedMutex::try_lock_shared() {
 	return queueCanBeAvoidedWithoutStarvation;
 }
 
-bool SharedMutex::canBypassAccessQueueForSharedLock() {
-	return (0 == nbWaitingExclusiveAccess);
-}
+bool SharedMutex::canBypassAccessQueueForSharedLock() { return (0 == nbWaitingExclusiveAccess); }
 
 }
