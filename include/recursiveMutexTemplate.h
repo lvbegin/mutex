@@ -42,6 +42,7 @@ class RecursiveMutexTemplate {
 public:
 	RecursiveMutexTemplate() : instanceId(newId()) { }
 	~RecursiveMutexTemplate() = default;
+	
 	void lock() {
 		if (instanceId >= recursiveAquire.size())
 			recursiveAquire.resize(instanceId + 1);
@@ -51,7 +52,7 @@ public:
 	}
 	void unlock() {
 		if (instanceId >= recursiveAquire.size() || 0 == recursiveAquire[instanceId])
-			throw new std::runtime_error("unlock a non-locked lock.");
+			throw std::runtime_error("unlock a non-locked lock.");
 		recursiveAquire[instanceId]--;
 		if (0 == recursiveAquire[instanceId])
 			mutex.unlock();
@@ -90,16 +91,15 @@ public:
 				(instanceId < recursiveAquire.size() && 0 == recursiveAquire[instanceId]))
 			RecursiveMutexTemplate<L>::mutex.lock_shared();
 		recursiveSharedAquire[instanceId]++;
-		}
+	}
 	void unlock_shared() {
 		const auto instanceId = RecursiveMutexTemplate<L>::instanceId;
 		if (instanceId >= recursiveSharedAquire.size() || 0 == recursiveSharedAquire[instanceId])
-			throw new std::runtime_error("unlock a non-locked lock.");
+			throw std::runtime_error("unlock a non-locked lock.");
 		recursiveSharedAquire[instanceId]--;
 		if (0 == recursiveSharedAquire[instanceId])
 			RecursiveMutexTemplate<L>::mutex.unlock_shared();
 	}
-
 	bool try_lock_shared() {
 		const auto instanceId = RecursiveMutexTemplate<L>::instanceId;
 		if (instanceId >= recursiveSharedAquire.size())
@@ -109,12 +109,9 @@ public:
 			recursiveSharedAquire[instanceId]++;
 		return locked;
 	}
-
 private:
 	static thread_local std::vector<uint_fast16_t> recursiveSharedAquire;
-
 };
-
 
 template<typename L>
 thread_local std::vector<uint_fast16_t> RecursiveMutexTemplate<L>::recursiveAquire;
