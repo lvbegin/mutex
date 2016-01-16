@@ -80,17 +80,16 @@ class RecursiveSharedMutexTemplate : public  RecursiveMutexTemplate<L> {
 public:
 	RecursiveSharedMutexTemplate() = default;
 	~RecursiveSharedMutexTemplate() = default;
-	/* do something to check that we do not lock a mutex already shared locked */
 
 	void lock_shared() {
-			const auto instanceId = RecursiveMutexTemplate<L>::instanceId;
-			const auto &recursiveAquire = RecursiveMutexTemplate<L>::recursiveAquire;
-			if (instanceId >= recursiveSharedAquire.size())
-				recursiveSharedAquire.resize(instanceId + 1);
-			if (0 == recursiveSharedAquire[instanceId] &&
-					(instanceId < recursiveAquire.size() && 0 == recursiveAquire[instanceId]))
-				RecursiveMutexTemplate<L>::mutex.lock_shared();
-			recursiveSharedAquire[instanceId]++;
+		const auto instanceId = RecursiveMutexTemplate<L>::instanceId;
+		const auto &recursiveAquire = RecursiveMutexTemplate<L>::recursiveAquire;
+		if (instanceId >= recursiveSharedAquire.size())
+			recursiveSharedAquire.resize(instanceId + 1);
+		if (0 == recursiveSharedAquire[instanceId] && 
+				(instanceId < recursiveAquire.size() && 0 == recursiveAquire[instanceId]))
+			RecursiveMutexTemplate<L>::mutex.lock_shared();
+		recursiveSharedAquire[instanceId]++;
 		}
 	void unlock_shared() {
 		const auto instanceId = RecursiveMutexTemplate<L>::instanceId;
