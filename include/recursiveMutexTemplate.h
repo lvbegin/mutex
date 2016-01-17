@@ -34,6 +34,7 @@
 #include <atomic>
 #include <vector>
 #include <stdexcept>
+#include <chrono>
 
 namespace std_mutex_extra {
 
@@ -76,6 +77,26 @@ private:
 	}
 };
 
+template <typename L>
+class RecursiveTimedMutexTemplate : public RecursiveMutexTemplate<L> {
+public:
+	RecursiveTimedMutexTemplate() = default;
+	~RecursiveTimedMutexTemplate() = default;
+
+	template<typename Rep, typename Period>
+	bool try_lock_for( const std::chrono::duration<Rep,Period>& timeout_duration ) {
+		const auto instanceId = RecursiveMutexTemplate<L>::instanceId;
+		auto &recursiveAquire = RecursiveMutexTemplate<L>::recursiveAquire;
+
+		if (instanceId >= recursiveAquire.size())
+			recursiveAquire.resize(instanceId + 1);
+		const auto locked = (0 == recursiveAquire[instanceId]) ? RecursiveMutexTemplate<L>::mutex.try_lock_for(timeout_duration) : true;
+		if (locked)
+			recursiveAquire[instanceId]++;
+		return locked;
+	}
+};
+
 template<typename L>
 class RecursiveSharedMutexTemplate : public  RecursiveMutexTemplate<L> {
 public:
@@ -85,6 +106,7 @@ public:
 	void lock_shared() {
 		const auto instanceId = RecursiveMutexTemplate<L>::instanceId;
 		const auto &recursiveAquire = RecursiveMutexTemplate<L>::recursiveAquire;
+
 		if (instanceId >= recursiveSharedAquire.size())
 			recursiveSharedAquire.resize(instanceId + 1);
 		if (0 == recursiveSharedAquire[instanceId] && 
@@ -94,6 +116,7 @@ public:
 	}
 	void unlock_shared() {
 		const auto instanceId = RecursiveMutexTemplate<L>::instanceId;
+
 		if (instanceId >= recursiveSharedAquire.size() || 0 == recursiveSharedAquire[instanceId])
 			throw std::runtime_error("unlock a non-locked lock.");
 		recursiveSharedAquire[instanceId]--;
@@ -102,6 +125,7 @@ public:
 	}
 	bool try_lock_shared() {
 		const auto instanceId = RecursiveMutexTemplate<L>::instanceId;
+
 		if (instanceId >= recursiveSharedAquire.size())
 			recursiveSharedAquire.resize(instanceId + 1);
 		const auto locked = (0 == recursiveSharedAquire[instanceId]) ? RecursiveMutexTemplate<L>::mutex.try_lock_shared() : true;

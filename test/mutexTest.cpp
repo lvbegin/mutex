@@ -2,6 +2,7 @@
 #include <sharedMutex.h>
 #include <iostream>
 #include <thread>
+#include <chrono>
 
 typedef std::unique_ptr<std::thread> threadPtr;
 typedef std::atomic<unsigned int> atomicUInt;
@@ -233,6 +234,24 @@ static void testSharedRecursiveMutexInParallel() {
 	printf("Exclusive mutex locked %u times\n", totalExclusive.load());
 }
 
+void try_to_lock_a_timed_mutex(std_mutex_extra::RecursiveTimedMutex *mutex)
+{
+	std::chrono::duration<int> timeout(2);
+	mutex->try_lock_for(timeout);
+}
+
+static void testTimeRecursiveMutex__does_not_block()
+{
+	std::cout << "test recursive timed mutex lock is non blocking" << std::endl;
+
+	std_mutex_extra::RecursiveTimedMutex mutex;
+	std::chrono::duration<int> timeout(2);
+	std::lock_guard<std_mutex_extra::RecursiveTimedMutex>lock1(mutex);
+	std::lock_guard<std_mutex_extra::RecursiveTimedMutex>lock2(mutex);
+	std::thread thread(try_to_lock_a_timed_mutex, &mutex);
+	thread.join();
+}
+
 int main()
 {
 	testRecursiveMutexInParallel<std_mutex_extra::RecursiveMutex>();
@@ -240,5 +259,6 @@ int main()
 	testSharedMutexInParallel();
 	testSharedMutexInParallel__try_locks();
 	testSharedRecursiveMutexInParallel();
+	testTimeRecursiveMutex__does_not_block();
 	return 1;
 }
