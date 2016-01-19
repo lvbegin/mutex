@@ -103,7 +103,7 @@ void SharedMutex::unlock() {
 bool SharedMutex::try_lock() {
 	if (!mutex.try_lock())
 		return false;
-	const auto canKeepMutex = (0 == nbSharedLocked);
+	const auto canKeepMutex = (0 == nbSharedLocked) && accessQueue->isEmpty();
 	if (!canKeepMutex)
 		mutex.unlock();
 	else {
