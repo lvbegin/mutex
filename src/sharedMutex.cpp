@@ -40,10 +40,17 @@ struct QueueElem {
 	const std::thread::id id;
 	QueueElem *next;
 	std::condition_variable mutexCanBeLocked;
+
+	QueueElem(std::thread::id id) : id(id), next(nullptr), mutexCanBeLocked() {}
+	~QueueElem() = default;
+};
+
+struct ThreadInfo {
+	struct QueueElem waitingQueueElem;
 	bool hasSharedLocked;
 
-	QueueElem(std::thread::id id) : id(id), next(nullptr), mutexCanBeLocked(), hasSharedLocked(false) {}
-	~QueueElem() = default;
+	ThreadInfo(std::thread::id id) : waitingQueueElem(id), hasSharedLocked(false) {}
+	~ThreadInfo() = default;
 };
 
 struct SharedMutex::NoStarvationQueue {
@@ -80,7 +87,7 @@ struct SharedMutex::NoStarvationQueue {
 	}
 };
 
-thread_local std::unique_ptr<QueueElem> queueElem;
+thread_local std::unique_ptr<ThreadInfo> threadInfo;
 
 SharedMutex::SharedMutex() : mutex(), nbSharedLocked(0), nbWaitingExclusiveAccess(0), accessQueue(new NoStarvationQueue()) { }
 
@@ -109,7 +116,7 @@ bool SharedMutex::try_lock() {
 		mutex.unlock();
 	else {
 		EnsureMemoryAllocated();
-		accessQueue->addInWaitingList(*queueElem);
+		accessQueue->addInWaitingList(threadInfo->waitingQueueElem);
 	}
 	return canKeepMutex;
 }
@@ -126,7 +133,7 @@ void SharedMutex::lock_shared() {
 void SharedMutex::unlock_shared() {
 	std::lock_guard<std::mutex> lock(mutex);
 
-	if (nullptr == queueElem.get() || !queueElem->hasSharedLocked)
+	if (nullptr == threadInfo.get() || !threadInfo->hasSharedLocked)
 		throw std::runtime_error("thread tries to unlock a SharedMutex that it did not lock.");
 	unmarkSharedOwnership();
 }
@@ -147,30 +154,30 @@ bool SharedMutex::try_lock_shared() {
 void SharedMutex::waitForLockExclusive(std::unique_lock<std::mutex> &lock)
 {
 	nbWaitingExclusiveAccess++;
-	accessQueue->wait(lock, *queueElem, [this](){ return accessQueue->headMatchesThreadId() && 0 == nbSharedLocked; } );
+	accessQueue->wait(lock, threadInfo->waitingQueueElem, [this](){ return accessQueue->headMatchesThreadId() && 0 == nbSharedLocked; } );
 	nbWaitingExclusiveAccess--;
 }
 
 void SharedMutex::waitForLockShared(std::unique_lock<std::mutex> &lock)
 {
-	accessQueue->wait(lock, *queueElem, [this](){ return accessQueue->headMatchesThreadId(); } );
+	accessQueue->wait(lock, threadInfo->waitingQueueElem, [this](){ return accessQueue->headMatchesThreadId(); } );
 	accessQueue->removeFirstElementFromWaitingList();
 }
 
 void SharedMutex::EnsureMemoryAllocated() {
-	if (nullptr == queueElem.get())
-		queueElem.reset(new QueueElem(std::this_thread::get_id()));
+	if (nullptr == threadInfo.get())
+		threadInfo.reset(new ThreadInfo(std::this_thread::get_id()));
 }
 
 void SharedMutex::unmarkSharedOwnership() {
-	queueElem->hasSharedLocked = false;
+	threadInfo->hasSharedLocked = false;
 	nbSharedLocked--;
 	if (0 == nbSharedLocked)
 		accessQueue->notifyFirstElem();
 }
 
 void SharedMutex::markSharedOwnership() {
-	queueElem->hasSharedLocked = true;
+	threadInfo->hasSharedLocked = true;
 	nbSharedLocked++;
 }
 
