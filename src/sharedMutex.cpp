@@ -40,8 +40,9 @@ struct QueueElem {
 	const std::thread::id id;
 	QueueElem *next;
 	std::condition_variable mutexCanBeLocked;
+	bool hasSharedLocked;
 
-	QueueElem(std::thread::id id) : id(id), next(nullptr), mutexCanBeLocked() {}
+	QueueElem(std::thread::id id) : id(id), next(nullptr), mutexCanBeLocked(), hasSharedLocked(false) {}
 	~QueueElem() = default;
 };
 
@@ -86,70 +87,94 @@ SharedMutex::~SharedMutex() = default;
 void SharedMutex::lock() {
 	std::unique_lock<std::mutex> lock(mutex);
 
+	EnsureMemoryAllocated();
 	waitForLockExclusive(lock);
 	lock.release();
 }
 
-void SharedMutex::waitForLockExclusive(std::unique_lock<std::mutex> &lock)
-{
-	nbWaitingExclusiveAccess++;
-	if (nullptr == queueElem.get())
-		queueElem.reset(new QueueElem(std::this_thread::get_id()));
-	accessQueue->wait(lock, *queueElem, [this](){ return accessQueue->headMatchesThreadId() && 0 == nbSharedLocked; } );
-	accessQueue->removeFirstElementFromWaitingList();
-	nbWaitingExclusiveAccess--;
-}
-
-
 void SharedMutex::unlock() {
+	if (!accessQueue->headMatchesThreadId())
+		throw std::runtime_error("thread tries to unlock a SharedMutex that it did not lock.");
+	accessQueue->removeFirstElementFromWaitingList();
 	accessQueue->notifyFirstElem();
 	mutex.unlock();
 }
 
 bool SharedMutex::try_lock() {
-	if (false == mutex.try_lock())
+	if (!mutex.try_lock())
 		return false;
 	const auto canKeepMutex = (0 == nbSharedLocked);
 	if (!canKeepMutex)
 		mutex.unlock();
+	else {
+		EnsureMemoryAllocated();
+		accessQueue->addInWaitingList(*queueElem);
+	}
 	return canKeepMutex;
 }
 
 void SharedMutex::lock_shared() {
 	std::unique_lock<std::mutex> lock(mutex);
 
+	EnsureMemoryAllocated();
 	if (!canBypassAccessQueueForSharedLock())
 		waitForLockShared(lock);
-	nbSharedLocked++;
-}
-
-void SharedMutex::waitForLockShared(std::unique_lock<std::mutex> &lock)
-{
-	if (nullptr == queueElem.get())
-		queueElem.reset(new QueueElem(std::this_thread::get_id()));
-	accessQueue->wait(lock, *queueElem, [this](){ return accessQueue->headMatchesThreadId(); } );
-	accessQueue->removeFirstElementFromWaitingList();
-	accessQueue->notifyFirstElem();
+	markSharedOwnership();
 }
 
 void SharedMutex::unlock_shared() {
 	std::lock_guard<std::mutex> lock(mutex);
 
+	if (nullptr == queueElem.get() || !queueElem->hasSharedLocked)
+		throw std::runtime_error("thread tries to unlock a SharedMutex that it did not lock.");
+	unmarkSharedOwnership();
+}
+
+bool SharedMutex::try_lock_shared() {
+	if (!mutex.try_lock())
+		return false;
+	const auto queueCanBeAvoidedWithoutStarvation = canBypassAccessQueueForSharedLock();
+	if (queueCanBeAvoidedWithoutStarvation)
+	{
+		EnsureMemoryAllocated();
+		markSharedOwnership();
+	}
+	mutex.unlock();
+	return queueCanBeAvoidedWithoutStarvation;
+}
+
+void SharedMutex::waitForLockExclusive(std::unique_lock<std::mutex> &lock)
+{
+	nbWaitingExclusiveAccess++;
+	accessQueue->wait(lock, *queueElem, [this](){ return accessQueue->headMatchesThreadId() && 0 == nbSharedLocked; } );
+	nbWaitingExclusiveAccess--;
+}
+
+void SharedMutex::waitForLockShared(std::unique_lock<std::mutex> &lock)
+{
+	accessQueue->wait(lock, *queueElem, [this](){ return accessQueue->headMatchesThreadId(); } );
+	accessQueue->removeFirstElementFromWaitingList();
+	accessQueue->notifyFirstElem();
+}
+
+void SharedMutex::EnsureMemoryAllocated() {
+	if (nullptr == queueElem.get())
+		queueElem.reset(new QueueElem(std::this_thread::get_id()));
+}
+
+void SharedMutex::unmarkSharedOwnership() {
+	queueElem->hasSharedLocked = false;
 	nbSharedLocked--;
 	if (0 == nbSharedLocked)
 		accessQueue->notifyFirstElem();
 }
 
-bool SharedMutex::try_lock_shared() {
-	if (false == mutex.try_lock())
-		return false;
-	const auto queueCanBeAvoidedWithoutStarvation = canBypassAccessQueueForSharedLock();
-	if (queueCanBeAvoidedWithoutStarvation)
-		nbSharedLocked++;
-	mutex.unlock();
-	return queueCanBeAvoidedWithoutStarvation;
+void SharedMutex::markSharedOwnership() {
+	queueElem->hasSharedLocked = true;
+	nbSharedLocked++;
 }
 
 bool SharedMutex::canBypassAccessQueueForSharedLock() { return (0 == nbWaitingExclusiveAccess); }
 
 }
+

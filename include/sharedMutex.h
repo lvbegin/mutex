@@ -66,6 +66,9 @@ private:
 	bool canBypassAccessQueueForSharedLock();
 	void waitForLockExclusive(std::unique_lock<std::mutex> &lock);
 	void waitForLockShared(std::unique_lock<std::mutex> &lock);
+	void markSharedOwnership();
+	void EnsureMemoryAllocated();
+	void unmarkSharedOwnership();
 };
 
 typedef RecursiveSharedMutexTemplate<SharedMutex> RecursiveSharedMutex;
