@@ -75,6 +75,8 @@ struct SharedMutex::NoStarvationQueue {
 		head = head->next;
 		if (nullptr == head)
 			tail = nullptr;
+		else
+			head->mutexCanBeLocked.notify_one();
 	}
 };
 
@@ -96,7 +98,6 @@ void SharedMutex::unlock() {
 	if (!accessQueue->headMatchesThreadId())
 		throw std::runtime_error("thread tries to unlock a SharedMutex that it did not lock.");
 	accessQueue->removeFirstElementFromWaitingList();
-	accessQueue->notifyFirstElem();
 	mutex.unlock();
 }
 
@@ -154,7 +155,6 @@ void SharedMutex::waitForLockShared(std::unique_lock<std::mutex> &lock)
 {
 	accessQueue->wait(lock, *queueElem, [this](){ return accessQueue->headMatchesThreadId(); } );
 	accessQueue->removeFirstElementFromWaitingList();
-	accessQueue->notifyFirstElem();
 }
 
 void SharedMutex::EnsureMemoryAllocated() {
