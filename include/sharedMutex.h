@@ -54,14 +54,15 @@ public:
 	void lock_shared();
 	void unlock_shared();
 	bool try_lock_shared();
-
 private:
 	struct NoStarvationQueue;
+	struct ThreadInfo;
 
 	std::mutex mutex;
 	uint_fast16_t nbSharedLocked;
 	uint_fast16_t nbWaitingExclusiveAccess;
 	std::unique_ptr<NoStarvationQueue> accessQueue;
+	static thread_local std::unique_ptr<ThreadInfo> threadInfo;
 
 	bool canBypassAccessQueueForSharedLock();
 	void waitForLockExclusive(std::unique_lock<std::mutex> &lock);

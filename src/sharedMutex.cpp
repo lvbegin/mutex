@@ -45,7 +45,7 @@ struct QueueElem {
 	~QueueElem() = default;
 };
 
-struct ThreadInfo {
+struct SharedMutex::ThreadInfo {
 	struct QueueElem waitingQueueElem;
 	bool hasSharedLocked;
 
@@ -87,7 +87,7 @@ struct SharedMutex::NoStarvationQueue {
 	}
 };
 
-thread_local std::unique_ptr<ThreadInfo> threadInfo;
+thread_local std::unique_ptr<SharedMutex::ThreadInfo> SharedMutex::threadInfo;
 
 SharedMutex::SharedMutex() : mutex(), nbSharedLocked(0), nbWaitingExclusiveAccess(0), accessQueue(new NoStarvationQueue()) { }
 
