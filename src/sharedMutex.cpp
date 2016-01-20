@@ -80,7 +80,7 @@ struct SharedMutex::NoStarvationQueue {
 	}
 	void removeFirstElementFromWaitingList() {
 		head = head->next;
-		if (nullptr == head)
+		if (isEmpty())
 			tail = nullptr;
 		else
 			head->mutexCanBeLocked.notify_one();
