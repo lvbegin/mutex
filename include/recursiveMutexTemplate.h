@@ -142,7 +142,7 @@ public:
 		if (instanceId >= recursiveSharedAquire.size())
 			recursiveSharedAquire.resize(instanceId + 1);
 		const auto locked = (0 == recursiveSharedAquire[instanceId]) ? RecursiveMutexTemplate<L>::mutex.try_lock_shared() : true;
-		if (true == locked)
+		if (locked)
 			recursiveSharedAquire[instanceId]++;
 		return locked;
 	}
