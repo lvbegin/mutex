@@ -72,7 +72,7 @@ private:
 	void unmarkSharedOwnership();
 };
 
-typedef RecursiveSharedMutexTemplate<SharedMutex> RecursiveSharedMutex;
+//typedef RecursiveSharedMutexTemplate<SharedMutex> RecursiveSharedMutex;
 
 }
 
