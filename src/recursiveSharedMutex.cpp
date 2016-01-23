@@ -43,7 +43,7 @@ void RecursiveSharedMutex::lock_shared() {
 	if (instanceId >= recursiveSharedAquire.size())
 		recursiveSharedAquire.resize(instanceId + 1);
 	if (0 == recursiveSharedAquire[instanceId] &&
-			(instanceId < recursiveAquire.size() && 0 == recursiveAquire[instanceId]))
+			((instanceId >= recursiveAquire.size()) || 0 == recursiveAquire[instanceId]))
 		RecursiveMutexTemplate<SharedMutex>::mutex.lock_shared();
 	recursiveSharedAquire[instanceId]++;
 }
