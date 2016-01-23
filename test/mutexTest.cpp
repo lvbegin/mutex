@@ -1,6 +1,7 @@
 #include <recursiveMutex.h>
 #include <sharedMutex.h>
 #include <recursiveSharedMutex.h>
+#include <recursiveTimedMutex.h>
 #include <iostream>
 #include <thread>
 #include <chrono>
@@ -16,22 +17,22 @@ static void threadUseRecursiveMutex(L *mutex, atomicUInt *inRecursiveCriticalSec
 		(*totalExclusive)++;
 		mutex->lock();
 		if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-			printf("error\n");
+			printf("error in lock\n");
 		mutex->lock();
 		if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-			printf("error\n");
+			printf("error in lock\n");
 		mutex->lock();
 		if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-			printf("error\n");
+			printf("error in lock\n");
 		mutex->unlock();
 		if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-			printf("error\n");
+			printf("error in lock\n");
 		mutex->unlock();
 		if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-			printf("error\n");
+			printf("error in lock\n");
 		mutex->unlock();
 		if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-			printf("error\n");
+			printf("error in lock\n");
 		(*inRecursiveCriticalSection)--;
 		mutex->unlock();
 	}
@@ -39,30 +40,31 @@ static void threadUseRecursiveMutex(L *mutex, atomicUInt *inRecursiveCriticalSec
 
 template <typename L>
 static void threadUseSharedRecursiveMutex(L *mutex, atomicUInt *inRecursiveCriticalSection, atomicUInt *SharedInCriticalSection, atomicUInt *totalShared) {
+
 	for (unsigned int i = 0; i < 10000; i++) {
-		mutex->lock();
+		mutex->lock_shared();
 		(*SharedInCriticalSection)++;
 		(*totalShared)++;
-		mutex->lock();
+		mutex->lock_shared();
 		if (inRecursiveCriticalSection->load() != 0)
-			printf("error\n");
-		mutex->lock();
+			printf("error in lock_shared\n");
+		mutex->lock_shared();
 		if (inRecursiveCriticalSection->load() != 0)
-			printf("error\n");
-		mutex->lock();
+			printf("error in lock_shared\n");
+		mutex->lock_shared();
 		if (inRecursiveCriticalSection->load() != 0)
-			printf("error\n");
-		mutex->unlock();
+			printf("error in lock_shared\n");
+		mutex->unlock_shared();
 		if (inRecursiveCriticalSection->load() != 0)
-			printf("error\n");
-		mutex->unlock();
+			printf("error in lock_shared\n");
+		mutex->unlock_shared();
 		if (inRecursiveCriticalSection->load() != 0)
-			printf("error\n");
-		mutex->unlock();
+			printf("error in lock_shared\n");
+		mutex->unlock_shared();
 		if (inRecursiveCriticalSection->load() != 0)
-			printf("error\n");
+			printf("error in lock_shared\n");
 		(*SharedInCriticalSection)--;
-		mutex->unlock();
+		mutex->unlock_shared();
 	}
 }
 
