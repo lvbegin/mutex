@@ -27,9 +27,6 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-
-
 #ifndef RW_MUTEX_H__
 #define RW_MUTEX_H__
 
@@ -40,6 +37,7 @@
 namespace std_mutex_extra {
 
 typedef RecursiveMutexTemplate<std::mutex> RecursiveMutex;
-//typedef RecursiveTimedMutexTemplate<std::timed_mutex> RecursiveTimedMutex;
+
 }
+
 #endif
