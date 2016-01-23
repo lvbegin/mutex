@@ -40,6 +40,6 @@
 namespace std_mutex_extra {
 
 typedef RecursiveMutexTemplate<std::mutex> RecursiveMutex;
-typedef RecursiveTimedMutexTemplate<std::timed_mutex> RecursiveTimedMutex;
+//typedef RecursiveTimedMutexTemplate<std::timed_mutex> RecursiveTimedMutex;
 }
 #endif
