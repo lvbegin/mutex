@@ -33,6 +33,9 @@ namespace std_mutex_extra {
 
 thread_local std::vector<uint_fast16_t> RecursiveSharedMutex::recursiveSharedAquire;
 
+static bool notAlreadyAquiredShared(unsigned int instanceId, std::vector<uint_fast16_t> &recursiveSharedAquire,
+												const std::vector<uint_fast16_t> &recursiveAquire);
+
 RecursiveSharedMutex::RecursiveSharedMutex() = default;
 RecursiveSharedMutex::~RecursiveSharedMutex() = default;
 
@@ -42,8 +45,7 @@ void RecursiveSharedMutex::lock_shared() {
 
 	if (instanceId >= recursiveSharedAquire.size())
 		recursiveSharedAquire.resize(instanceId + 1);
-	if (0 == recursiveSharedAquire[instanceId] &&
-			((instanceId >= recursiveAquire.size()) || 0 == recursiveAquire[instanceId]))
+	if (notAlreadyAquiredShared(instanceId, recursiveSharedAquire, recursiveAquire))
 		RecursiveMutexTemplate<SharedMutex>::mutex.lock_shared();
 	recursiveSharedAquire[instanceId]++;
 }
@@ -61,13 +63,22 @@ void RecursiveSharedMutex::unlock_shared() {
 bool RecursiveSharedMutex::try_lock_shared() {
 	const auto instanceId = RecursiveMutexTemplate<SharedMutex>::instanceId;
 	auto &mutex = RecursiveMutexTemplate<SharedMutex>::mutex;
+	const auto &recursiveAquire = RecursiveMutexTemplate<SharedMutex>::recursiveAquire;
 
 	if (instanceId >= recursiveSharedAquire.size())
 		recursiveSharedAquire.resize(instanceId + 1);
-	const auto locked = (0 == recursiveSharedAquire[instanceId]) ? mutex.try_lock_shared() : true;
+	const auto locked = notAlreadyAquiredShared(instanceId, recursiveSharedAquire, recursiveAquire) ? mutex.try_lock_shared() : true;
 	if (locked)
 		recursiveSharedAquire[instanceId]++;
 	return locked;
 }
+
+
+static bool notAlreadyAquiredShared(unsigned int instanceId, std::vector<uint_fast16_t> &recursiveSharedAquire,
+												const std::vector<uint_fast16_t> &recursiveAquire) {
+	return (0 == recursiveSharedAquire[instanceId] &&
+			((instanceId >= recursiveAquire.size()) || 0 == recursiveAquire[instanceId]));
+}
+
 
 }
