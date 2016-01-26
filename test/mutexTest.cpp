@@ -3,6 +3,7 @@
 #include <recursiveTimedMutex.h>
 #include <sharedTimedMutex.h>
 #include <sharedMutexTemplate.h>
+#include <conditionVariable.h>
 #include <iostream>
 #include <thread>
 #include <chrono>
@@ -532,6 +533,86 @@ static void testSharedTimedMutexInParallel__try_lock_until() {
 
 }
 
+static void threadThatwaitwithPred(std::timed_mutex *mutex, std_mutex_extra::condition_variable<std::timed_mutex> *condition,
+		atomicUInt *nbWaiting) {
+	std::unique_lock<std::timed_mutex> lock(*mutex);
+	(*nbWaiting)++;
+	condition->wait(lock, [nbWaiting]() { return (0 == nbWaiting->load()); });
+}
+
+static void threadThatwait(std::timed_mutex *mutex, std_mutex_extra::condition_variable<std::timed_mutex> *condition,
+		atomicUInt *nbWaiting) {
+	std::unique_lock<std::timed_mutex> lock(*mutex);
+	(*nbWaiting)++;
+	condition->wait(lock);
+}
+
+static void condition_variable__wait_with_pred_and_notify_one() {
+
+	std::cout << "test condition variable (wait with pred/notify_one)" << std::endl;
+
+	std_mutex_extra::condition_variable<std::timed_mutex> condition;
+	std::timed_mutex mutex;
+	atomicUInt nbWaiting { 0 };
+	threadPtr t(new std::thread(threadThatwaitwithPred, &mutex, &condition, &nbWaiting));
+	while (0 == nbWaiting) {
+
+	}
+
+	std::unique_lock<std::timed_mutex> lock(mutex);
+	condition.notify_one();
+	lock.unlock();
+	lock.lock();
+	nbWaiting--;
+	condition.notify_one();
+	lock.unlock();
+	t->join();
+	std::cout << "test condition variable (wait with pred/notify_one) finished successfully" << std::endl;
+}
+
+static void condition_variable__wait_and_notify_one() {
+
+	std::cout << "test condition variable (wait/notify_one)" << std::endl;
+
+	std_mutex_extra::condition_variable<std::timed_mutex> condition;
+	std::timed_mutex mutex;
+	atomicUInt nbWaiting { 0 };
+	threadPtr t(new std::thread(threadThatwait, &mutex, &condition, &nbWaiting));
+	while (0 == nbWaiting) {
+
+	}
+
+	std::unique_lock<std::timed_mutex> lock(mutex);
+	condition.notify_one();
+	lock.unlock();
+	t->join();
+	std::cout << "test condition variable (wait/notify_one) finished successfully" << std::endl;
+}
+
+
+static void condition_variable__wait_and_notify_all() {
+
+	std::cout << "test condition variable (wait/notify_all)" << std::endl;
+
+	std_mutex_extra::condition_variable<std::timed_mutex> condition;
+	std::timed_mutex mutex;
+	atomicUInt nbWaiting { 0 };
+
+	std::vector<threadPtr> threads;
+	threads.push_back(threadPtr(new std::thread(threadThatwait, &mutex, &condition, &nbWaiting)));
+	threads.push_back(threadPtr(new std::thread(threadThatwait, &mutex, &condition, &nbWaiting)));
+	while (2 != nbWaiting) {
+
+	}
+
+	std::unique_lock<std::timed_mutex> lock(mutex);
+	condition.notify_all();
+	lock.unlock();
+	for (const auto &t : threads)
+		t->join();
+	std::cout << "test condition variable (wait/notify_all) finished successfully" << std::endl;
+}
+
 int main()
 {
 	testRecursiveMutexInParallel<std_mutex_extra::RecursiveMutex>();
@@ -546,6 +627,8 @@ int main()
 	testSharedTimedMutexInParallel__try_lock_until_shared();
 	testSharedTimedMutexInParallel__try_lock_for();
 	testSharedTimedMutexInParallel__try_lock_until();
-
+	condition_variable__wait_and_notify_one();
+	condition_variable__wait_with_pred_and_notify_one();
+	condition_variable__wait_and_notify_all();
 	return 1;
 }
