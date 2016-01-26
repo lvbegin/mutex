@@ -27,52 +27,18 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #ifndef SHARED_MUTEX_H__
 #define SHARED_MUTEX_H__
 
-#include <stdint.h>
-#include <mutex>
-#include <memory>
-#include <recursiveMutexTemplate.h>
+#include <sharedMutexTemplate.h>
 
 namespace std_mutex_extra {
 
-class SharedMutex {
-public:
-	SharedMutex();
-	~SharedMutex();
-
-	SharedMutex(const SharedMutex &other) = delete;
-	SharedMutex &operator=(const SharedMutex &other) = delete;
-	SharedMutex(SharedMutex &&other) = delete;
-	SharedMutex &operator=(SharedMutex &&other) = delete;
-
-	void lock();
-	void unlock();
-	bool try_lock();
-	void lock_shared();
-	void unlock_shared();
-	bool try_lock_shared();
-private:
-	struct NoStarvationQueue;
-	struct ThreadInfo;
-
-	std::mutex mutex;
-	uint_fast16_t nbSharedLocked;
-	uint_fast16_t nbWaitingExclusiveAccess;
-	std::unique_ptr<NoStarvationQueue> accessQueue;
-	static thread_local std::unique_ptr<ThreadInfo> threadInfo;
-
-	bool canBypassAccessQueueForSharedLock();
-	void waitForLockExclusive(std::unique_lock<std::mutex> &lock);
-	void waitForLockShared(std::unique_lock<std::mutex> &lock);
-	void markSharedOwnership();
-	void EnsureMemoryAllocated();
-	void unmarkSharedOwnership();
+class SharedMutex : public SharedMutexTemplate<std::mutex> {
+	public:
+	SharedMutex() = default;
+	~SharedMutex() = default;
 };
-
-//typedef RecursiveSharedMutexTemplate<SharedMutex> RecursiveSharedMutex;
 
 }
 

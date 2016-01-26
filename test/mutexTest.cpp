@@ -1,7 +1,8 @@
 #include <recursiveMutex.h>
-#include <sharedMutex.h>
 #include <recursiveSharedMutex.h>
 #include <recursiveTimedMutex.h>
+#include <sharedTimedMutex.h>
+#include <sharedMutexTemplate.h>
 #include <iostream>
 #include <thread>
 #include <chrono>
@@ -15,6 +16,8 @@ static void threadUseRecursiveMutex(L *mutex, atomicUInt *inRecursiveCriticalSec
 		mutex->lock();
 		(*inRecursiveCriticalSection)++;
 		(*totalExclusive)++;
+		if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
+			printf("error in lock\n");
 		mutex->lock();
 		if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
 			printf("error in lock\n");
@@ -45,6 +48,8 @@ static void threadUseSharedRecursiveMutex(L *mutex, atomicUInt *inRecursiveCriti
 		mutex->lock_shared();
 		(*SharedInCriticalSection)++;
 		(*totalShared)++;
+		if (inRecursiveCriticalSection->load() != 0)
+			printf("error in lock_shared\n");
 		mutex->lock_shared();
 		if (inRecursiveCriticalSection->load() != 0)
 			printf("error in lock_shared\n");
@@ -75,6 +80,8 @@ static void threadUseRecursiveTryLockForMutex(L *mutex, atomicUInt *inRecursiveC
 		if (mutex->try_lock_for(timeout)) {
 			(*inRecursiveCriticalSection)++;
 			(*totalExclusive)++;
+			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
+				printf("error in try_lock_for\n");
 			mutex->try_lock_for(timeout);
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
 				printf("error in try_lock_for\n");
@@ -106,6 +113,8 @@ static void threadUseRecursiveTryLockUntilMutex(L *mutex, atomicUInt *inRecursiv
 		if (mutex->try_lock_until(inTwoSeconds)) {
 			(*inRecursiveCriticalSection)++;
 			(*totalExclusive)++;
+			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
+				printf("error in try_lock_for\n");
 			inTwoSeconds = std::chrono::steady_clock::now() + std::chrono::seconds(2);
 			mutex->try_lock_until(inTwoSeconds);
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
@@ -132,6 +141,7 @@ static void threadUseRecursiveTryLockUntilMutex(L *mutex, atomicUInt *inRecursiv
 		}
 	}
 }
+
 
 template <typename L>
 static void testRecursiveMutexInParallel() {
@@ -189,7 +199,8 @@ static void threadUseExclusiveMutex(std_mutex_extra::SharedMutex *mutex,
 	}
 }
 
-static void threadUseTrySharedMutex(std_mutex_extra::SharedMutex *mutex,
+template <typename M>
+static void threadUseTrySharedMutex(M *mutex,
 		atomicUInt *inSharedCriticalSection,
 		atomicUInt *inExclusiveCriticalSection,
 		atomicUInt *totalShared,
@@ -209,7 +220,8 @@ static void threadUseTrySharedMutex(std_mutex_extra::SharedMutex *mutex,
 	}
 }
 
-static void threadUseTryExclusiveMutex(std_mutex_extra::SharedMutex *mutex,
+template <typename M>
+static void threadUseTryExclusiveMutex(M *mutex,
 		atomicUInt *inSharedCriticalSection,
 		atomicUInt *inExclusiveCriticalSection,
 		atomicUInt *totalShared,
@@ -222,6 +234,66 @@ static void threadUseTryExclusiveMutex(std_mutex_extra::SharedMutex *mutex,
 				printf("error: (try_lock) exclusive and shared at the same time.(shared = %u, exclusive = %u)\n", inSharedCriticalSection->load(), inExclusiveCriticalSection->load());
 			(*totalExclusive)++;
 			(*inExclusiveCriticalSection)--;
+			mutex->unlock();
+		}
+	}
+}
+
+template <typename L>
+static void threadUseTryLockForSharedMutex(L *mutex, atomicUInt *inExlusiveCriticalSection, atomicUInt *SharedInCriticalSection, atomicUInt *totalShared) {
+	const std::chrono::duration<int> timeout(2);
+	for (unsigned int i = 0; i < 10000; i++) {
+		if (mutex->try_lock_for_shared(timeout)) {
+			(*SharedInCriticalSection)++;
+			(*totalShared)++;
+			if (inExlusiveCriticalSection->load() != 0)
+				printf("error in try_lock_for\n");
+			(*SharedInCriticalSection)--;
+			mutex->unlock_shared();
+		}
+	}
+}
+
+template <typename L>
+static void threadUseTryLockUntilSharedMutex(L *mutex, atomicUInt *inExlusiveCriticalSection, atomicUInt *SharedInCriticalSection, atomicUInt *totalShared) {
+	for (unsigned int i = 0; i < 10000; i++) {
+		const auto inTwoSeconds = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+		if (mutex->try_lock_until_shared(inTwoSeconds)) {
+			(*SharedInCriticalSection)++;
+			(*totalShared)++;
+			if (inExlusiveCriticalSection->load() != 0)
+				printf("error in try_lock_for\n");
+			(*SharedInCriticalSection)--;
+			mutex->unlock_shared();
+		}
+	}
+}
+
+template <typename L>
+static void threadUseTryLockForMutex(L *mutex, atomicUInt *inExlusiveCriticalSection, atomicUInt *SharedInCriticalSection, atomicUInt *totalExclusive) {
+	const std::chrono::duration<int> timeout(2);
+	for (unsigned int i = 0; i < 10000; i++) {
+		if (mutex->try_lock_for(timeout)) {
+			(*inExlusiveCriticalSection)++;
+			(*totalExclusive)++;
+			if (1 != inExlusiveCriticalSection->load() || 0 != SharedInCriticalSection->load())
+				printf("error in try_lock_for\n");
+			(*inExlusiveCriticalSection)--;
+			mutex->unlock();
+		}
+	}
+}
+
+template <typename L>
+static void threadUseTryLockUntilMutex(L *mutex, atomicUInt *inExlusiveCriticalSection, atomicUInt *SharedInCriticalSection, atomicUInt *totalExclusive) {
+	for (unsigned int i = 0; i < 10000; i++) {
+		const auto inTwoSeconds = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+		if (mutex->try_lock_until(inTwoSeconds)) {
+			(*inExlusiveCriticalSection)++;
+			(*totalExclusive)++;
+			if (1 != inExlusiveCriticalSection->load() || 0 != SharedInCriticalSection->load())
+				printf("error in try_lock_until\n");
+			(*inExlusiveCriticalSection)--;
 			mutex->unlock();
 		}
 	}
@@ -261,10 +333,10 @@ static void testSharedMutexInParallel__try_locks() {
 	std_mutex_extra::SharedMutex mutex;
 	std::vector<threadPtr> threads;
 	for(unsigned int i = 0; i < 5; i++) {
-		threads.push_back(threadPtr(new std::thread(threadUseTrySharedMutex, &mutex, &inSharedCriticalSection, &inExclusiveCriticalSection, &totalShared, &totalExclusive)));
+		threads.push_back(threadPtr(new std::thread(threadUseTrySharedMutex<std_mutex_extra::SharedMutex>, &mutex, &inSharedCriticalSection, &inExclusiveCriticalSection, &totalShared, &totalExclusive)));
 	}
 	for(unsigned int i = 0; i < 100; i++) {
-		threads.push_back(threadPtr(new std::thread(threadUseTryExclusiveMutex, &mutex, &inSharedCriticalSection, &inExclusiveCriticalSection, &totalShared, &totalExclusive)));
+		threads.push_back(threadPtr(new std::thread(threadUseTryExclusiveMutex<std_mutex_extra::SharedMutex>, &mutex, &inSharedCriticalSection, &inExclusiveCriticalSection, &totalShared, &totalExclusive)));
 	}
 	for(const auto &t : threads) {
 		t->join();
@@ -363,6 +435,102 @@ static void testRecursiveTimedMutexInParallel__try_lock_until() {
 	printf("Exclusive mutex locked %u times\n", totalExclusive.load());
 }
 
+static void testSharedTimedMutexInParallel__try_lock_for_shared() {
+	atomicUInt inSharedCriticalSection { 0 };
+	atomicUInt inExclusiveCriticalSection { 0 };
+	atomicUInt totalShared { 0 };
+	atomicUInt totalExclusive { 0 };
+
+	std::cout << "test shared timed mutex in parallel (with try_locks_for_shared)" << std::endl;
+	std_mutex_extra::SharedTimedMutex mutex;
+	std::vector<threadPtr> threads;
+//	for(unsigned int i = 0; i < 5; i++) {
+	for(unsigned int i = 0; i < 1; i++) {
+		threads.push_back(threadPtr(new std::thread(threadUseTryLockForMutex<std_mutex_extra::SharedTimedMutex>, &mutex, &inSharedCriticalSection, &inExclusiveCriticalSection, &totalShared)));
+	}
+	for(unsigned int i = 0; i < 100; i++) {
+		threads.push_back(threadPtr(new std::thread(threadUseTrySharedMutex<std_mutex_extra::SharedTimedMutex>, &mutex, &inSharedCriticalSection, &inExclusiveCriticalSection, &totalShared, &totalExclusive)));
+	}
+	for(const auto &t : threads) {
+		t->join();
+	}
+
+	printf("Shared mutex locked %u times\n", totalShared.load());
+	printf("Exclusive mutex locked %u times\n", totalExclusive.load());
+
+}
+
+static void testSharedTimedMutexInParallel__try_lock_until_shared() {
+	atomicUInt inSharedCriticalSection { 0 };
+	atomicUInt inExclusiveCriticalSection { 0 };
+	atomicUInt totalShared { 0 };
+	atomicUInt totalExclusive { 0 };
+
+	std::cout << "test shared timed mutex in parallel (with try_locks_until_shared)" << std::endl;
+	std_mutex_extra::SharedTimedMutex mutex;
+	std::vector<threadPtr> threads;
+	for(unsigned int i = 0; i < 5; i++) {
+		threads.push_back(threadPtr(new std::thread(threadUseTryLockUntilSharedMutex<std_mutex_extra::SharedTimedMutex>, &mutex, &inSharedCriticalSection, &inExclusiveCriticalSection, &totalShared)));
+	}
+	for(unsigned int i = 0; i < 100; i++) {
+		threads.push_back(threadPtr(new std::thread(threadUseTryExclusiveMutex<std_mutex_extra::SharedTimedMutex>, &mutex, &inSharedCriticalSection, &inExclusiveCriticalSection, &totalShared, &totalExclusive)));
+	}
+	for(const auto &t : threads) {
+		t->join();
+	}
+
+	printf("Shared mutex locked %u times\n", totalShared.load());
+	printf("Exclusive mutex locked %u times\n", totalExclusive.load());
+
+}
+
+static void testSharedTimedMutexInParallel__try_lock_for() {
+	atomicUInt inSharedCriticalSection { 0 };
+	atomicUInt inExclusiveCriticalSection { 0 };
+	atomicUInt totalShared { 0 };
+	atomicUInt totalExclusive { 0 };
+
+	std::cout << "test shared timed mutex in parallel (with try_lock_for)" << std::endl;
+	std_mutex_extra::SharedTimedMutex mutex;
+	std::vector<threadPtr> threads;
+	for(unsigned int i = 0; i < 5; i++) {
+		threads.push_back(threadPtr(new std::thread(threadUseTryLockForMutex<std_mutex_extra::SharedTimedMutex>, &mutex, &inSharedCriticalSection, &inExclusiveCriticalSection, &totalExclusive)));
+	}
+	for(unsigned int i = 0; i < 100; i++) {
+		threads.push_back(threadPtr(new std::thread(threadUseTrySharedMutex<std_mutex_extra::SharedTimedMutex>, &mutex, &inSharedCriticalSection, &inExclusiveCriticalSection, &totalShared, &totalExclusive)));
+	}
+	for(const auto &t : threads) {
+		t->join();
+	}
+
+	printf("Shared mutex locked %u times\n", totalShared.load());
+	printf("Exclusive mutex locked %u times\n", totalExclusive.load());
+
+}
+
+static void testSharedTimedMutexInParallel__try_lock_until() {
+	atomicUInt inSharedCriticalSection { 0 };
+	atomicUInt inExclusiveCriticalSection { 0 };
+	atomicUInt totalShared { 0 };
+	atomicUInt totalExclusive { 0 };
+
+	std::cout << "test shared timed mutex in parallel (with try_lock_until)" << std::endl;
+	std_mutex_extra::SharedTimedMutex mutex;
+	std::vector<threadPtr> threads;
+	for(unsigned int i = 0; i < 5; i++) {
+		threads.push_back(threadPtr(new std::thread(threadUseTryLockUntilMutex<std_mutex_extra::SharedTimedMutex>, &mutex, &inSharedCriticalSection, &inExclusiveCriticalSection, &totalExclusive)));
+	}
+	for(unsigned int i = 0; i < 100; i++) {
+		threads.push_back(threadPtr(new std::thread(threadUseTrySharedMutex<std_mutex_extra::SharedTimedMutex>, &mutex, &inSharedCriticalSection, &inExclusiveCriticalSection, &totalShared, &totalExclusive)));
+	}
+	for(const auto &t : threads) {
+		t->join();
+	}
+
+	printf("Shared mutex locked %u times\n", totalShared.load());
+	printf("Exclusive mutex locked %u times\n", totalExclusive.load());
+
+}
 
 int main()
 {
@@ -374,5 +542,10 @@ int main()
 	testTimeRecursiveMutex__does_not_block();
 	testRecursiveTimedMutexInParallel__try_lock_for();
 	testRecursiveTimedMutexInParallel__try_lock_until();
+	testSharedTimedMutexInParallel__try_lock_for_shared();
+	testSharedTimedMutexInParallel__try_lock_until_shared();
+	testSharedTimedMutexInParallel__try_lock_for();
+	testSharedTimedMutexInParallel__try_lock_until();
+
 	return 1;
 }
