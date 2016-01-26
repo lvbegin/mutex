@@ -131,10 +131,10 @@ void SharedMutex::lock_shared() {
 }
 
 void SharedMutex::unlock_shared() {
-	std::lock_guard<std::mutex> lock(mutex);
-
 	if (nullptr == threadInfo.get() || !threadInfo->hasSharedLocked)
 		throw std::runtime_error("thread tries to unlock a SharedMutex that it did not lock.");
+
+	std::lock_guard<std::mutex> lock(mutex);
 	unmarkSharedOwnership();
 }
 
