@@ -35,10 +35,17 @@ private:
 
 	void wait(std::unique_lock<M> &lock, std::unique_lock<std::mutex> &conditionLock) {
 		lock.unlock();
-		condition.wait(conditionLock);
-		conditionLock.unlock();
+		waitAndUnlockConditionMutex(conditionLock);
 		lock.lock();
 	}
+	void waitAndUnlockConditionMutex(std::unique_lock<std::mutex> &conditionLock) {
+		/* we unlock here the condition mutex to avoid deadlocks.
+		 * For that, we must always follow the following order when acquiring mutexes:
+		 * lock the client mutex, then lock the condition mutex.
+		 */
+			condition.wait(conditionLock);
+			conditionLock.unlock();
+		}
 };
 
 }
