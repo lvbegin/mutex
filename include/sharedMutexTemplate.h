@@ -144,8 +144,7 @@ private:
 		}
 		void wait(std::unique_lock<std::mutex> &locked, QueueElem &elem, std::function<bool()> condition) {
 			addInWaitingList(elem);
-			while (!condition())
-				elem.mutexCanBeLocked.wait(locked);
+			elem.mutexCanBeLocked.wait(locked, condition);
 		}
 		void notifyFirstElem() {
 			if (!isEmpty())
