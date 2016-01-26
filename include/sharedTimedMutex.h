@@ -2,10 +2,11 @@
 #define __SHARED_TIMED_MUTEX_H__
 
 #include <sharedMutexTemplate.h>
+#include <conditionVariable.h>
 
 namespace std_mutex_extra {
 
-class SharedTimedMutex : public SharedMutexTemplate<std::timed_mutex> {
+class SharedTimedMutex : public SharedMutexTemplate<std::timed_mutex, std_mutex_extra::condition_variable<std::timed_mutex>> {
 public:
 	SharedTimedMutex() = default;
 	~SharedTimedMutex() = default;

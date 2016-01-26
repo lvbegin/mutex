@@ -184,7 +184,8 @@ static void threadUseSharedMutex(std_mutex_extra::SharedMutex *mutex,
 	}
 }
 
-static void threadUseExclusiveMutex(std_mutex_extra::SharedMutex *mutex,
+template <typename M>
+static void threadUseExclusiveMutex(M *mutex,
 		atomicUInt *inSharedCriticalSection,
 		atomicUInt *inExclusiveCriticalSection,
 		atomicUInt *totalShared,
@@ -313,7 +314,7 @@ static void testSharedMutexInParallel() {
 		threads.push_back(threadPtr(new std::thread(threadUseSharedMutex, &mutex, &inSharedCriticalSection, &inExclusiveCriticalSection, &totalShared, &totalExclusive)));
 	}
 	for(unsigned int i = 0; i < 2; i++) {
-		threads.push_back(threadPtr(new std::thread(threadUseExclusiveMutex, &mutex, &inSharedCriticalSection, &inExclusiveCriticalSection, &totalShared, &totalExclusive)));
+		threads.push_back(threadPtr(new std::thread(threadUseExclusiveMutex<std_mutex_extra::SharedMutex>, &mutex, &inSharedCriticalSection, &inExclusiveCriticalSection, &totalShared, &totalExclusive)));
 	}
 
 	for(const auto &t : threads) {
@@ -445,8 +446,10 @@ static void testSharedTimedMutexInParallel__try_lock_for_shared() {
 	std::cout << "test shared timed mutex in parallel (with try_locks_for_shared)" << std::endl;
 	std_mutex_extra::SharedTimedMutex mutex;
 	std::vector<threadPtr> threads;
-//	for(unsigned int i = 0; i < 5; i++) {
-	for(unsigned int i = 0; i < 1; i++) {
+	for(unsigned int i = 0; i < 5; i++) {
+		threads.push_back(threadPtr(new std::thread(threadUseExclusiveMutex<std_mutex_extra::SharedTimedMutex>, &mutex, &inSharedCriticalSection, &inExclusiveCriticalSection, &totalShared, &totalExclusive)));
+	}
+	for(unsigned int i = 0; i < 5; i++) {
 		threads.push_back(threadPtr(new std::thread(threadUseTryLockForMutex<std_mutex_extra::SharedTimedMutex>, &mutex, &inSharedCriticalSection, &inExclusiveCriticalSection, &totalShared)));
 	}
 	for(unsigned int i = 0; i < 100; i++) {
@@ -588,7 +591,6 @@ static void condition_variable__wait_and_notify_one() {
 	t->join();
 	std::cout << "test condition variable (wait/notify_one) finished successfully" << std::endl;
 }
-
 
 static void condition_variable__wait_and_notify_all() {
 

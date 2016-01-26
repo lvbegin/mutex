@@ -34,7 +34,7 @@
 
 namespace std_mutex_extra {
 
-class SharedMutex : public SharedMutexTemplate<std::mutex> {
+class SharedMutex : public SharedMutexTemplate<std::mutex, std::condition_variable> {
 	public:
 	SharedMutex() = default;
 	~SharedMutex() = default;

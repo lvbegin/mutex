@@ -40,7 +40,7 @@
 
 namespace std_mutex_extra {
 
-template <typename M>
+template <typename M, typename C>
 class SharedMutexTemplate {
 public:
 	SharedMutexTemplate() : mutex(), nbSharedLocked(0), nbWaitingExclusiveAccess(0), accessQueue(new NoStarvationQueue()) { }
@@ -112,7 +112,7 @@ private:
 	struct QueueElem {
 		const std::thread::id id;
 		QueueElem *next;
-		std::condition_variable mutexCanBeLocked;
+		C mutexCanBeLocked;
 
 		QueueElem(std::thread::id id) : id(id), next(nullptr), mutexCanBeLocked() {}
 		~QueueElem() = default;
@@ -142,7 +142,7 @@ private:
 				tail->next = &elem;
 			tail = &elem;
 		}
-		void wait(std::unique_lock<std::mutex> &locked, QueueElem &elem, std::function<bool()> condition) {
+		void wait(std::unique_lock<M> &locked, QueueElem &elem, std::function<bool()> condition) {
 			addInWaitingList(elem);
 			elem.mutexCanBeLocked.wait(locked, condition);
 		}
@@ -166,14 +166,14 @@ private:
 	static thread_local std::unique_ptr<ThreadInfo> threadInfo;
 	static const std::function<bool(M &mutex)> TryLockFunction;
 
-	void waitForLockExclusive(std::unique_lock<std::mutex> &lock)
+	void waitForLockExclusive(std::unique_lock<M> &lock)
 	{
 		nbWaitingExclusiveAccess++;
 		accessQueue->wait(lock, threadInfo->waitingQueueElem, [this](){ return accessQueue->headMatchesThreadId() && 0 == nbSharedLocked; } );
 		nbWaitingExclusiveAccess--;
 	}
 
-	void waitForLockShared(std::unique_lock<std::mutex> &lock)
+	void waitForLockShared(std::unique_lock<M> &lock)
 	{
 		accessQueue->wait(lock, threadInfo->waitingQueueElem, [this](){ return accessQueue->headMatchesThreadId(); } );
 		accessQueue->removeFirstElementFromWaitingList();
@@ -200,11 +200,11 @@ private:
 
 };
 
-template <typename M>
-thread_local std::unique_ptr<struct SharedMutexTemplate<M>::ThreadInfo> SharedMutexTemplate<M>::threadInfo;
+template <typename M, typename C>
+thread_local std::unique_ptr<struct SharedMutexTemplate<M, C>::ThreadInfo> SharedMutexTemplate<M, C>::threadInfo;
 
-template <typename M>
-const std::function<bool(M &mutex)> SharedMutexTemplate<M>::TryLockFunction = [](M &mutex) { return mutex.try_lock(); };
+template <typename M, typename C>
+const std::function<bool(M &mutex)> SharedMutexTemplate<M, C>::TryLockFunction = [](M &mutex) { return mutex.try_lock(); };
 
 
 }
