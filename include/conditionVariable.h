@@ -18,6 +18,7 @@ public:
 		std::unique_lock<std::mutex> conditionLock(condition_mutex);
 		while (!pred()) {
 			wait(lock, conditionLock);
+			conditionLock.lock();
 		}
 	}
 	void notify_one() {
