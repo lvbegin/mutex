@@ -12,37 +12,6 @@ typedef std::unique_ptr<std::thread> threadPtr;
 typedef std::atomic<unsigned int> atomicUInt;
 
 template <typename L>
-static void threadUseRecursiveMutex(L *mutex, atomicUInt *inRecursiveCriticalSection, atomicUInt *SharedInCriticalSection, atomicUInt *totalExclusive) {
-	for (unsigned int i = 0; i < 10000; i++) {
-		mutex->lock();
-		(*inRecursiveCriticalSection)++;
-		(*totalExclusive)++;
-		if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-			printf("error in lock\n");
-		mutex->lock();
-		if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-			printf("error in lock\n");
-		mutex->lock();
-		if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-			printf("error in lock\n");
-		mutex->lock();
-		if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-			printf("error in lock\n");
-		mutex->unlock();
-		if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-			printf("error in lock\n");
-		mutex->unlock();
-		if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-			printf("error in lock\n");
-		mutex->unlock();
-		if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-			printf("error in lock\n");
-		(*inRecursiveCriticalSection)--;
-		mutex->unlock();
-	}
-}
-
-template <typename L>
 static void threadUseSharedRecursiveMutex(L *mutex, atomicUInt *inRecursiveCriticalSection, atomicUInt *SharedInCriticalSection, atomicUInt *totalShared) {
 
 	for (unsigned int i = 0; i < 10000; i++) {
@@ -75,32 +44,32 @@ static void threadUseSharedRecursiveMutex(L *mutex, atomicUInt *inRecursiveCriti
 }
 
 template <typename L>
-static void threadUseRecursiveTryLockForMutex(L *mutex, atomicUInt *inRecursiveCriticalSection, atomicUInt *SharedInCriticalSection, atomicUInt *totalExclusive) {
-	const std::chrono::duration<int> timeout(2);
+static void threadUseRecursiveTryLockMutex(L *mutex, std::function<bool(L *)> tryLock, atomicUInt *inRecursiveCriticalSection,
+								atomicUInt *SharedInCriticalSection, atomicUInt *totalExclusive) {
 	for (unsigned int i = 0; i < 10000; i++) {
-		if (mutex->try_lock_for(timeout)) {
+		if (tryLock(mutex)) {
 			(*inRecursiveCriticalSection)++;
 			(*totalExclusive)++;
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in try_lock_for\n");
-			mutex->try_lock_for(timeout);
+				printf("error in when locking mutex\n");
+			tryLock(mutex);
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in try_lock_for\n");
-			mutex->try_lock_for(timeout);
+				printf("error in when locking mutex\n");
+			tryLock(mutex);
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in try_lock_for\n");
-			mutex->try_lock_for(timeout);
+				printf("error in when locking mutex\n");
+			tryLock(mutex);
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in try_lock_for\n");
+				printf("error in when locking mutex\n");
 			mutex->unlock();
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in try_lock_for\n");
+				printf("error in when locking mutex\n");
 			mutex->unlock();
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in try_lock_for\n");
+				printf("error in when locking mutex\n");
 			mutex->unlock();
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in try_lock_for\n");
+				printf("error in when locking mutex\n");
 			(*inRecursiveCriticalSection)--;
 			mutex->unlock();
 		}
@@ -108,39 +77,22 @@ static void threadUseRecursiveTryLockForMutex(L *mutex, atomicUInt *inRecursiveC
 }
 
 template <typename L>
+static void threadUseRecursiveMutex(L *mutex, atomicUInt *inRecursiveCriticalSection, atomicUInt *SharedInCriticalSection, atomicUInt *totalExclusive) {
+	const auto &tryLockFunc = [](L *mutex) { mutex->lock(); return true; };
+	threadUseRecursiveTryLockMutex<L>(mutex, tryLockFunc, inRecursiveCriticalSection, SharedInCriticalSection, totalExclusive);
+}
+
+template <typename L>
+static void threadUseRecursiveTryLockForMutex(L *mutex, atomicUInt *inRecursiveCriticalSection, atomicUInt *SharedInCriticalSection, atomicUInt *totalExclusive) {
+	const auto &tryLockFunc = [](L *mutex) { return mutex->try_lock_for(std::chrono::seconds(2)); };
+	threadUseRecursiveTryLockMutex<L>(mutex, tryLockFunc, inRecursiveCriticalSection, SharedInCriticalSection, totalExclusive);
+}
+
+template <typename L>
 static void threadUseRecursiveTryLockUntilMutex(L *mutex, atomicUInt *inRecursiveCriticalSection, atomicUInt *SharedInCriticalSection, atomicUInt *totalExclusive) {
-	for (unsigned int i = 0; i < 10000; i++) {
-		auto inTwoSeconds = std::chrono::steady_clock::now() + std::chrono::seconds(2);
-		if (mutex->try_lock_until(inTwoSeconds)) {
-			(*inRecursiveCriticalSection)++;
-			(*totalExclusive)++;
-			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in try_lock_for\n");
-			inTwoSeconds = std::chrono::steady_clock::now() + std::chrono::seconds(2);
-			mutex->try_lock_until(inTwoSeconds);
-			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in try_lock_for\n");
-			inTwoSeconds = std::chrono::steady_clock::now() + std::chrono::seconds(2);
-			mutex->try_lock_until(inTwoSeconds);
-			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in try_lock_for\n");
-			inTwoSeconds = std::chrono::steady_clock::now() + std::chrono::seconds(2);
-			mutex->try_lock_until(inTwoSeconds);
-			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in try_lock_for\n");
-			mutex->unlock();
-			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in try_lock_for\n");
-			mutex->unlock();
-			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in try_lock_for\n");
-			mutex->unlock();
-			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in try_lock_for\n");
-			(*inRecursiveCriticalSection)--;
-			mutex->unlock();
-		}
-	}
+	const auto &tryLockFunc = [](L *mutex) { const auto inTwoSeconds = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+												return mutex->try_lock_until(inTwoSeconds); };
+	threadUseRecursiveTryLockMutex<L>(mutex, tryLockFunc, inRecursiveCriticalSection, SharedInCriticalSection, totalExclusive);
 }
 
 
