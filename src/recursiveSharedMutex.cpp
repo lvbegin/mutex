@@ -64,12 +64,10 @@ bool RecursiveSharedMutex::try_lock_shared() {
 	return locked;
 }
 
-
 static bool notAlreadyAquiredShared(unsigned int instanceId, std::vector<uint_fast16_t> &recursiveSharedAquire,
 												const std::vector<uint_fast16_t> &recursiveAquire) {
 	return (0 == recursiveSharedAquire[instanceId] &&
 			((instanceId >= recursiveAquire.size()) || 0 == recursiveAquire[instanceId]));
 }
-
 
 }

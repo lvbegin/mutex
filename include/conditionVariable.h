@@ -45,7 +45,6 @@ public:
 		waitAndUnlockConditionMutex(conditionLock);
 		lock.lock();
 	}
-
 	void wait(std::unique_lock<M> &lock, std::function<bool()> pred) {
 		while (!pred())
 			wait(lock);
@@ -67,9 +66,9 @@ private:
 		 * For that, we must always follow the following order when acquiring mutexes:
 		 * lock the client mutex, then lock the condition mutex.
 		 */
-			condition.wait(conditionLock);
-			conditionLock.unlock();
-		}
+		condition.wait(conditionLock);
+		conditionLock.unlock();
+	}
 };
 
 }
