@@ -12,14 +12,14 @@ class condition_variable {
 public:
 	void wait(std::unique_lock<M> &lock) {
 		std::unique_lock<std::mutex> conditionLock(condition_mutex);
-		wait(lock, conditionLock);
+		lock.unlock();
+		waitAndUnlockConditionMutex(conditionLock);
+		lock.lock();
 	}
+
 	void wait(std::unique_lock<M> &lock, std::function<bool()> pred) {
-		std::unique_lock<std::mutex> conditionLock(condition_mutex);
-		while (!pred()) {
-			wait(lock, conditionLock);
-			conditionLock.lock();
-		}
+		while (!pred())
+			wait(lock);
 	}
 	void notify_one() {
 		std::lock_guard<std::mutex> conditionLock(condition_mutex);
@@ -33,11 +33,6 @@ private:
 	std::condition_variable condition;
 	std::mutex condition_mutex;
 
-	void wait(std::unique_lock<M> &lock, std::unique_lock<std::mutex> &conditionLock) {
-		lock.unlock();
-		waitAndUnlockConditionMutex(conditionLock);
-		lock.lock();
-	}
 	void waitAndUnlockConditionMutex(std::unique_lock<std::mutex> &conditionLock) {
 		/* we unlock here the condition mutex to avoid deadlocks.
 		 * For that, we must always follow the following order when acquiring mutexes:
