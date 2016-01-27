@@ -35,6 +35,7 @@
 #include <vector>
 #include <stdexcept>
 #include <chrono>
+#include <functional>
 
 namespace std_mutex_extra {
 
@@ -58,18 +59,21 @@ public:
 		if (0 == recursiveAquire[instanceId])
 			mutex.unlock();
 	}
-	bool try_lock() {
-		if (instanceId >= recursiveAquire.size())
-			recursiveAquire.resize(instanceId + 1);
-		const auto locked = (0 == recursiveAquire[instanceId]) ? mutex.try_lock() : true;
-		if (true == locked)
-			recursiveAquire[instanceId]++;
-		return locked;
-	}
+	bool try_lock() { return nonRecursiveTryLock([](L &mutex) {return mutex.try_lock(); } ); }
 protected:
 	const unsigned int instanceId;
 	static thread_local std::vector<uint_fast16_t> recursiveAquire;
 	L mutex;
+
+	bool nonRecursiveTryLock(std::function<bool(L &mutex)> tryLockFunction)
+	{
+		if (instanceId >= recursiveAquire.size())
+			recursiveAquire.resize(instanceId + 1);
+		const auto locked = (0 == recursiveAquire[instanceId]) ? tryLockFunction(mutex) : true;
+		if (locked)
+			recursiveAquire[instanceId]++;
+		return locked;
+	}
 private:
 	unsigned int newId() {
 		static std::atomic<unsigned int> nbInstances { 0 };
