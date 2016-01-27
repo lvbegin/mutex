@@ -59,9 +59,7 @@ public:
 		accessQueue->removeFirstElementFromWaitingList();
 		mutex.unlock();
 	}
-	bool try_lock() {
-		return try_lock(TryLockFunction);
-	}
+	bool try_lock() { return try_lock(TryLockFunction); }
 	void lock_shared() {
 		std::unique_lock<M> lock(mutex);
 
@@ -77,9 +75,7 @@ public:
 
 		unmarkSharedOwnership();
 	}
-	bool try_lock_shared() {
-		return try_lock_shared(TryLockFunction);
-	}
+	bool try_lock_shared() { return try_lock_shared(TryLockFunction); }
 
 protected:
 	bool try_lock(std::function<bool(M &mutex)> lockFunction)
