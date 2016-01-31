@@ -3,7 +3,8 @@
 #include <recursiveTimedMutex.h>
 #include <sharedTimedMutex.h>
 #include <conditionVariable.h>
-#include <templates/sharedMutexTemplate.h>
+//#include <templates/sharedMutexTemplate.h>
+#include <recursiveSharedTimedMutex.h>
 #include <iostream>
 #include <thread>
 #include <chrono>
@@ -410,6 +411,14 @@ static void testSharedTimedMutexInParallel__try_lock_until() {
 			threadUseTrySharedMutex<std_mutex_extra::SharedTimedMutex>);
 }
 
+static void testRecursiveSharedTimedMutexInParallel__lock() {
+	std::cout << "test shared timed mutex in parallel (with lock())" << std::endl;
+
+	testWithTwoTypesOfThreads<std_mutex_extra::RecursiveSharedTimedMutex>(threadUseExclusiveMutex<std_mutex_extra::RecursiveSharedTimedMutex>,
+			threadUseRecursiveMutex<std_mutex_extra::RecursiveSharedTimedMutex>);
+}
+
+
 static void threadThatwaitwithPred(std::timed_mutex *mutex, std_mutex_extra::condition_variable<std::timed_mutex> *condition,
 		atomicUInt *nbWaiting) {
 	std::unique_lock<std::timed_mutex> lock(*mutex);
@@ -505,6 +514,8 @@ int main()
 	testSharedTimedMutexInParallel__try_lock_until_shared();
 	testSharedTimedMutexInParallel__try_lock_for();
 	testSharedTimedMutexInParallel__try_lock_until();
+	testRecursiveSharedTimedMutexInParallel__lock();
+
 	condition_variable__wait_and_notify_one();
 	condition_variable__wait_with_pred_and_notify_one();
 	condition_variable__wait_and_notify_all();
