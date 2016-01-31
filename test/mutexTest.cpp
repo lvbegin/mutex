@@ -94,6 +94,17 @@ static void threadUseRecursiveMutex(L *mutex,
 }
 
 template <typename L>
+static void threadUseRecursiveTryLockMutex(L *mutex,
+		atomicUInt *inRecursiveCriticalSection,
+		atomicUInt *SharedInCriticalSection,
+		atomicUInt *totalExclusive,
+		atomicUInt *totalShared) {
+	const auto &tryLockFunc = [](L *mutex) { return mutex->try_lock(); };
+	threadUseRecursiveGenericTryLockMutex<L>(mutex, tryLockFunc, inRecursiveCriticalSection, SharedInCriticalSection, totalExclusive);
+}
+
+
+template <typename L>
 static void threadUseRecursiveTryLockForMutex(L *mutex,
 		atomicUInt *inRecursiveCriticalSection,
 		atomicUInt *SharedInCriticalSection,
@@ -412,12 +423,32 @@ static void testSharedTimedMutexInParallel__try_lock_until() {
 }
 
 static void testRecursiveSharedTimedMutexInParallel__lock() {
-	std::cout << "test shared timed mutex in parallel (with lock())" << std::endl;
+	std::cout << "test shared timed mutex in parallel (lock())" << std::endl;
 
 	testWithTwoTypesOfThreads<std_mutex_extra::RecursiveSharedTimedMutex>(threadUseExclusiveMutex<std_mutex_extra::RecursiveSharedTimedMutex>,
 			threadUseRecursiveMutex<std_mutex_extra::RecursiveSharedTimedMutex>);
 }
 
+static void testRecursiveSharedTimedMutexInParallel__try_lock() {
+	std::cout << "test shared timed mutex in parallel (try_lock())" << std::endl;
+
+	testWithTwoTypesOfThreads<std_mutex_extra::RecursiveSharedTimedMutex>(threadUseExclusiveMutex<std_mutex_extra::RecursiveSharedTimedMutex>,
+			threadUseRecursiveTryLockMutex<std_mutex_extra::RecursiveSharedTimedMutex>);
+}
+
+static void testRecursiveSharedTimedMutexInParallel__try_lock_for() {
+	std::cout << "test shared timed mutex in parallel (try_lock())" << std::endl;
+
+	testWithTwoTypesOfThreads<std_mutex_extra::RecursiveSharedTimedMutex>(threadUseExclusiveMutex<std_mutex_extra::RecursiveSharedTimedMutex>,
+			threadUseRecursiveTryLockForMutex<std_mutex_extra::RecursiveSharedTimedMutex>);
+}
+
+static void testRecursiveSharedTimedMutexInParallel__try_lock_until() {
+	std::cout << "test shared timed mutex in parallel (try_lock())" << std::endl;
+
+	testWithTwoTypesOfThreads<std_mutex_extra::RecursiveSharedTimedMutex>(threadUseExclusiveMutex<std_mutex_extra::RecursiveSharedTimedMutex>,
+			threadUseRecursiveTryLockUntilMutex<std_mutex_extra::RecursiveSharedTimedMutex>);
+}
 
 static void threadThatwaitwithPred(std::timed_mutex *mutex, std_mutex_extra::condition_variable<std::timed_mutex> *condition,
 		atomicUInt *nbWaiting) {
@@ -515,6 +546,9 @@ int main()
 	testSharedTimedMutexInParallel__try_lock_for();
 	testSharedTimedMutexInParallel__try_lock_until();
 	testRecursiveSharedTimedMutexInParallel__lock();
+	testRecursiveSharedTimedMutexInParallel__try_lock();
+	testRecursiveSharedTimedMutexInParallel__try_lock_for();
+	testRecursiveSharedTimedMutexInParallel__try_lock_until();
 
 	condition_variable__wait_and_notify_one();
 	condition_variable__wait_with_pred_and_notify_one();
