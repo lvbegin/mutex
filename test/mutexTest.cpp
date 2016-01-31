@@ -21,30 +21,66 @@ static void threadUseRecursiveTryLockMutex(L *mutex, std::function<bool(L *)> tr
 			(*inRecursiveCriticalSection)++;
 			(*totalExclusive)++;
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in when locking mutex\n");
+				printf("error in when locking mutex (lock())\n");
 			tryLock(mutex);
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in when locking mutex\n");
+				printf("error in when locking mutex (lock())\n");
 			tryLock(mutex);
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in when locking mutex\n");
+				printf("error in when locking mutex (lock())\n");
 			tryLock(mutex);
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in when locking mutex\n");
+				printf("error in when locking mutex (lock())\n");
 			mutex->unlock();
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in when locking mutex\n");
+				printf("error in when locking mutex (lock())\n");
 			mutex->unlock();
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in when locking mutex\n");
+				printf("error in when locking mutex (lock())\n");
 			mutex->unlock();
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in when locking mutex\n");
+				printf("error in when locking mutex (lock())\n");
 			(*inRecursiveCriticalSection)--;
 			mutex->unlock();
 		}
 	}
 }
+
+template <typename L>
+static void threadUseRecursiveTryLockSharedMutex(L *mutex, std::function<bool(L *)> tryLockShared,
+		atomicUInt *inRecursiveCriticalSection,
+		atomicUInt *inSharedCriticalSection,
+		atomicUInt *totalShared) {
+	for (unsigned int i = 0; i < 10000; i++) {
+		if (tryLockShared(mutex)) {
+			(*inSharedCriticalSection)++;
+			(*totalShared)++;
+			if (0 != inRecursiveCriticalSection->load())
+				printf("error in when locking mutex\n");
+			tryLockShared(mutex);
+			if (0 != inRecursiveCriticalSection->load())
+				printf("error in when locking mutex\n");
+			tryLockShared(mutex);
+			if (0 != inRecursiveCriticalSection->load())
+				printf("error in when locking mutex\n");
+			tryLockShared(mutex);
+			if (0 != inRecursiveCriticalSection->load())
+				printf("error in when locking mutex\n");
+			mutex->unlock_shared();
+			if (0 != inRecursiveCriticalSection->load())
+				printf("error in when locking mutex\n");
+			mutex->unlock_shared();
+			if (0 != inRecursiveCriticalSection->load())
+				printf("error in when locking mutex\n");
+			mutex->unlock_shared();
+			if (0 != inRecursiveCriticalSection->load())
+				printf("error in when locking mutex\n");
+			(*inSharedCriticalSection)--;
+			mutex->unlock_shared();
+		}
+	}
+}
+
 
 template <typename L>
 static void threadUseRecursiveMutex(L *mutex,
@@ -75,6 +111,37 @@ static void threadUseRecursiveTryLockUntilMutex(L *mutex,
 	const auto &tryLockFunc = [](L *mutex) { const auto inTwoSeconds = std::chrono::steady_clock::now() + std::chrono::seconds(2);
 												return mutex->try_lock_until(inTwoSeconds); };
 	threadUseRecursiveTryLockMutex<L>(mutex, tryLockFunc, inRecursiveCriticalSection, SharedInCriticalSection, totalExclusive);
+}
+
+template <typename L>
+static void threadUseRecursiveSharedMutex(L *mutex,
+		atomicUInt *inRecursiveCriticalSection,
+		atomicUInt *SharedInCriticalSection,
+		atomicUInt *totalExclusive,
+		atomicUInt *totalShared) {
+	const auto &tryLockFunc = [](L *mutex) { mutex->lock_shared(); return true; };
+	threadUseRecursiveTryLockSharedMutex<L>(mutex, tryLockFunc, inRecursiveCriticalSection, SharedInCriticalSection, totalShared);
+}
+
+template <typename L>
+static void threadUseRecursiveTryLockSharedForMutex(L *mutex,
+		atomicUInt *inRecursiveCriticalSection,
+		atomicUInt *SharedInCriticalSection,
+		atomicUInt *totalExclusive,
+		atomicUInt *totalShared) {
+	const auto &tryLockFunc = [](L *mutex) { return mutex->try_lock_for_shared(std::chrono::seconds(2)); };
+	threadUseRecursiveTryLockSharedMutex<L>(mutex, tryLockFunc, inRecursiveCriticalSection, SharedInCriticalSection, totalShared);
+}
+
+template <typename L>
+static void threadUseRecursiveTryLockSharedUntilMutex(L *mutex,
+		atomicUInt *inRecursiveCriticalSection,
+		atomicUInt *SharedInCriticalSection,
+		atomicUInt *totalExclusive,
+		atomicUInt *totalShared) {
+	const auto &tryLockFunc = [](L *mutex) { const auto inTwoSeconds = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+												return mutex->try_lock_until_shared(inTwoSeconds); };
+	threadUseRecursiveTryLockSharedMutex<L>(mutex, tryLockFunc, inRecursiveCriticalSection, SharedInCriticalSection, totalShared);
 }
 
 template <typename L>
@@ -263,11 +330,18 @@ static void testSharedMutexInParallel__try_locks() {
 			threadUseTryExclusiveMutex<std_mutex_extra::SharedMutex>);
 }
 
-static void testSharedRecursiveMutexInParallel() {
-	std::cout << "test recursive shared mutex in parallel" << std::endl;
+static void testSharedRecursiveMutexInParallel__lock() {
+	std::cout << "test recursive shared mutex in parallel (lock)" << std::endl;
 
 	testWithTwoTypesOfThreads<std_mutex_extra::RecursiveSharedMutex>(threadUseRecursiveMutex<std_mutex_extra::RecursiveSharedMutex>,
 			threadUseRecursiveMutex<std_mutex_extra::RecursiveSharedMutex>);
+}
+
+static void testSharedRecursiveMutexInParallel__lock_shared() {
+	std::cout << "test recursive shared mutex in parallel (lock_shared)" << std::endl;
+
+	testWithTwoTypesOfThreads<std_mutex_extra::RecursiveSharedMutex>(threadUseRecursiveMutex<std_mutex_extra::RecursiveSharedMutex>,
+			threadUseRecursiveSharedMutex<std_mutex_extra::RecursiveSharedMutex>);
 }
 
 static void testRecursiveTimedMutexInParallel__try_lock_for() {
@@ -404,7 +478,8 @@ int main()
 	testRecursiveMutexInParallel<std_mutex_extra::RecursiveSharedMutex>();
 	testSharedMutexInParallel();
 	testSharedMutexInParallel__try_locks();
-	testSharedRecursiveMutexInParallel();
+	testSharedRecursiveMutexInParallel__lock();
+	testSharedRecursiveMutexInParallel__lock_shared();
 	testRecursiveTimedMutexInParallel__try_lock_for();
 	testRecursiveTimedMutexInParallel__try_lock_until();
 	testSharedTimedMutexInParallel__lock();
