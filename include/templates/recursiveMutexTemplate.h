@@ -46,11 +46,8 @@ public:
 
 	template <typename M>
 	static void lock(unsigned int instanceId, M & mutex) {
-		if (instanceId >= recursiveAquireCounters.size())
-			recursiveAquireCounters.resize(instanceId + 1);
-		if (0 == recursiveAquireCounters[instanceId])
-			mutex.lock();
-		recursiveAquireCounters[instanceId]++;
+		static const auto &TryLockFunction = [](M &mutex) { mutex.lock(); return true; };
+		RecursiveTryLock<M>(instanceId, mutex, TryLockFunction);
 	}
 	template <typename M>
 	static void unlock(unsigned int instanceId, M & mutex) {
@@ -61,17 +58,16 @@ public:
 			mutex.unlock();
 	}
 	template <typename M>
-	static bool try_lock(unsigned int instanceId, M &mutex) { return nonRecursiveTryLock<M>(instanceId, mutex, [](M &mutex) {return mutex.try_lock(); } ); }
-
+	static bool try_lock(unsigned int instanceId, M &mutex) { return RecursiveTryLock<M>(instanceId, mutex, [](M &mutex) {return mutex.try_lock(); } ); }
 	template<typename M, typename Rep, typename Period>
 	static bool try_lock_for(unsigned int instanceId, M &mutex, const std::chrono::duration<Rep, Period>& timeout_duration ) {
 		const auto &TryLockFunction = [timeout_duration](M &mutex) { return mutex.try_lock_for(timeout_duration); };
-		return RecursiveMutexTemplate::nonRecursiveTryLock<M>(instanceId, mutex, TryLockFunction);
+		return RecursiveTryLock<M>(instanceId, mutex, TryLockFunction);
 	}
 	template<typename M, typename Clock, typename Duration>
 	static bool try_lock_until(unsigned int instanceId, M &mutex, const std::chrono::time_point<Clock, Duration>& timeout_time ) {
 		const auto &TryLockFunction = [timeout_time](M &mutex) { return mutex.try_lock_until(timeout_time); };
-		return RecursiveMutexTemplate::nonRecursiveTryLock<M>(instanceId, mutex, TryLockFunction);
+		return RecursiveTryLock<M>(instanceId, mutex, TryLockFunction);
 	}
 	static unsigned int newId() {
 		static std::atomic<unsigned int> nbInstances { 0 };
@@ -81,7 +77,7 @@ protected:
 	static thread_local std::vector<uint_fast16_t> recursiveAquireCounters;
 
 	template <typename M>
-	static bool nonRecursiveTryLock(unsigned int instanceId, M &mutex, std::function<bool(M &mutex)> tryLockFunction)
+	static bool RecursiveTryLock(unsigned int instanceId, M &mutex, std::function<bool(M &mutex)> tryLockFunction)
 	{
 		if (instanceId >= recursiveAquireCounters.size())
 			recursiveAquireCounters.resize(instanceId + 1);
@@ -93,7 +89,5 @@ protected:
 };
 
 }
-
-
 
 #endif

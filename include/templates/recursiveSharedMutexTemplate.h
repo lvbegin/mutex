@@ -39,8 +39,8 @@ class RecursiveSharedMutexTemplate : public  RecursiveMutexTemplate {
 public:
 	template <typename M>
 	static void lock_shared(unsigned int instanceId, M &mutex) {
-		const auto &tryLockFunc = [](M &mutex) { mutex.lock_shared(); return true; };
-		tryLockShared<M>(instanceId, mutex, tryLockFunc);
+		const auto &tryLockFunction = [](M &mutex) { mutex.lock_shared(); return true; };
+		recursiveTryLockShared<M>(instanceId, mutex, tryLockFunction);
 	}
 	template <typename M>
 	static void unlock_shared(unsigned int instanceId, M &mutex) {
@@ -52,18 +52,18 @@ public:
 	}
 	template <typename M>
 	static bool try_lock_shared(unsigned int instanceId, M &mutex) {
-		const auto &tryLockFunc = [](M &mutex) { return mutex.try_lock_shared(); };
-		return tryLockShared<M>(instanceId, mutex, tryLockFunc);
+		const auto &tryLockFunction = [](M &mutex) { return mutex.try_lock_shared(); };
+		return recursiveTryLockShared<M>(instanceId, mutex, tryLockFunction);
 	}
 	template<typename M, typename Rep, typename Period>
 	static bool try_lock_for_shared(unsigned int instanceId, M &mutex, const std::chrono::duration<Rep, Period>& timeout_duration ) {
-		const auto &tryLockFunc = [timeout_duration](M &mutex) { return mutex.try_lock_for_shared(timeout_duration); };
-		return tryLockShared<M>(instanceId, mutex, tryLockFunc);
+		const auto &tryLockFunction = [timeout_duration](M &mutex) { return mutex.try_lock_for_shared(timeout_duration); };
+		return recursiveTryLockShared<M>(instanceId, mutex, tryLockFunction);
 	}
 	template<typename M, typename Clock, typename Duration>
 	static bool try_lock_until_shared(unsigned int instanceId, M &mutex, const std::chrono::time_point<Clock, Duration>& timeout_time ) {
-		const auto &tryLockFunc = [timeout_time](M &mutex) { return mutex.try_lock_until_shared(timeout_time); };
-		return tryLockShared<M>(instanceId, mutex, tryLockFunc);
+		const auto &tryLockFunction = [timeout_time](M &mutex) { return mutex.try_lock_until_shared(timeout_time); };
+		return recursiveTryLockShared<M>(instanceId, mutex, tryLockFunction);
 	}
 private:
 	const unsigned int id;
@@ -71,7 +71,7 @@ private:
 	static thread_local std::vector<uint_fast16_t> recursiveSharedAquire;
 
 	template <typename M>
-	static bool tryLockShared(unsigned int instanceId, M &mutex, std::function<bool(M &mutex)> tryLockFunction) {
+	static bool recursiveTryLockShared(unsigned int instanceId, M &mutex, std::function<bool(M &mutex)> tryLockFunction) {
 		if (instanceId >= recursiveSharedAquire.size())
 			recursiveSharedAquire.resize(instanceId + 1);
 		const auto locked = notAlreadyAquiredShared(instanceId, recursiveSharedAquire, recursiveAquireCounters) ? tryLockFunction(mutex) : true;
