@@ -31,26 +31,29 @@
 #define RECURSIVE_TIMED_MUTEX_H__
 
 #include <recursiveMutexTemplate.h>
-
 #include <mutex>
 
 namespace std_mutex_extra {
 
-class RecursiveTimedMutex : public RecursiveMutexTemplate<std::timed_mutex> {
+class RecursiveTimedMutex {
 public:
-	RecursiveTimedMutex() = default;
+	RecursiveTimedMutex() : id(RecursiveMutexTemplate::newId()) {}
 	~RecursiveTimedMutex() = default;
 
+	void lock() { RecursiveMutexTemplate::lock<std::timed_mutex>(id, mutex); }
+	void unlock() { RecursiveMutexTemplate::unlock<std::timed_mutex>(id, mutex); }
+	bool try_lock() { return RecursiveMutexTemplate::try_lock<std::timed_mutex>(id, mutex); }
 	template<typename Rep, typename Period>
 	bool try_lock_for( const std::chrono::duration<Rep, Period>& timeout_duration ) {
-		const auto &TryLockFunction = [timeout_duration](std::timed_mutex &mutex) { return mutex.try_lock_for(timeout_duration); };
-		return nonRecursiveTryLock(TryLockFunction);
+		return RecursiveMutexTemplate::try_lock_for<std::timed_mutex, Rep, Period>(id, mutex, timeout_duration);
 	}
 	template<typename Clock, typename Duration>
 	bool try_lock_until( const std::chrono::time_point<Clock, Duration>& timeout_time ) {
-		const auto &TryLockFunction = [timeout_time](std::timed_mutex &mutex) { return mutex.try_lock_until(timeout_time); };
-		return nonRecursiveTryLock(TryLockFunction);
+		return RecursiveMutexTemplate::try_lock_until<std::timed_mutex, Clock, Duration>(id, mutex, timeout_time);
 	}
+private:
+	const unsigned int id;
+	std::timed_mutex mutex;
 };
 
 }

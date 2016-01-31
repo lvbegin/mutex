@@ -39,50 +39,58 @@
 
 namespace std_mutex_extra {
 
-template <typename L>
 class RecursiveMutexTemplate {
 public:
-	RecursiveMutexTemplate() : instanceId(newId()) { }
-	~RecursiveMutexTemplate() = default;
-	
-	void lock() {
-		if (instanceId >= recursiveAquire.size())
-			recursiveAquire.resize(instanceId + 1);
-		if (0 == recursiveAquire[instanceId])
+	RecursiveMutexTemplate() = delete;
+	~RecursiveMutexTemplate() = delete;
+
+	template <typename M>
+	static void lock(unsigned int instanceId, M & mutex) {
+		if (instanceId >= recursiveAquireCounters.size())
+			recursiveAquireCounters.resize(instanceId + 1);
+		if (0 == recursiveAquireCounters[instanceId])
 			mutex.lock();
-		recursiveAquire[instanceId]++;
+		recursiveAquireCounters[instanceId]++;
 	}
-	void unlock() {
-		if (instanceId >= recursiveAquire.size() || 0 == recursiveAquire[instanceId])
+	template <typename M>
+	static void unlock(unsigned int instanceId, M & mutex) {
+		if (instanceId >= recursiveAquireCounters.size() || 0 == recursiveAquireCounters[instanceId])
 			throw std::runtime_error("unlock a non-locked lock.");
-		recursiveAquire[instanceId]--;
-		if (0 == recursiveAquire[instanceId])
+		recursiveAquireCounters[instanceId]--;
+		if (0 == recursiveAquireCounters[instanceId])
 			mutex.unlock();
 	}
-	bool try_lock() { return nonRecursiveTryLock([](L &mutex) {return mutex.try_lock(); } ); }
-protected:
-	const unsigned int instanceId;
-	static thread_local std::vector<uint_fast16_t> recursiveAquire;
-	L mutex;
+	template <typename M>
+	static bool try_lock(unsigned int instanceId, M &mutex) { return nonRecursiveTryLock<M>(instanceId, mutex, [](M &mutex) {return mutex.try_lock(); } ); }
 
-	bool nonRecursiveTryLock(std::function<bool(L &mutex)> tryLockFunction)
-	{
-		if (instanceId >= recursiveAquire.size())
-			recursiveAquire.resize(instanceId + 1);
-		const auto locked = (0 == recursiveAquire[instanceId]) ? tryLockFunction(mutex) : true;
-		if (locked)
-			recursiveAquire[instanceId]++;
-		return locked;
+	template<typename M, typename Rep, typename Period>
+	static bool try_lock_for(unsigned int instanceId, M &mutex, const std::chrono::duration<Rep, Period>& timeout_duration ) {
+		const auto &TryLockFunction = [timeout_duration](M &mutex) { return mutex.try_lock_for(timeout_duration); };
+		return RecursiveMutexTemplate::nonRecursiveTryLock<M>(instanceId, mutex, TryLockFunction);
 	}
-private:
-	unsigned int newId() {
+	template<typename M, typename Clock, typename Duration>
+	static bool try_lock_until(unsigned int instanceId, M &mutex, const std::chrono::time_point<Clock, Duration>& timeout_time ) {
+		const auto &TryLockFunction = [timeout_time](M &mutex) { return mutex.try_lock_until(timeout_time); };
+		return RecursiveMutexTemplate::nonRecursiveTryLock<M>(instanceId, mutex, TryLockFunction);
+	}
+	static unsigned int newId() {
 		static std::atomic<unsigned int> nbInstances { 0 };
 		return nbInstances++;
 	}
-};
+protected:
+	static thread_local std::vector<uint_fast16_t> recursiveAquireCounters;
 
-template<typename L>
-thread_local std::vector<uint_fast16_t> RecursiveMutexTemplate<L>::recursiveAquire;
+	template <typename M>
+	static bool nonRecursiveTryLock(unsigned int instanceId, M &mutex, std::function<bool(M &mutex)> tryLockFunction)
+	{
+		if (instanceId >= recursiveAquireCounters.size())
+			recursiveAquireCounters.resize(instanceId + 1);
+		const auto locked = (0 == recursiveAquireCounters[instanceId]) ? tryLockFunction(mutex) : true;
+		if (locked)
+			recursiveAquireCounters[instanceId]++;
+		return locked;
+	}
+};
 
 }
 

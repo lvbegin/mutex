@@ -32,9 +32,7 @@
 #define SHARED_MUTEX_TEMPLATE_H__
 
 #include <stdint.h>
-#include <mutex>
 #include <memory>
-#include <recursiveMutexTemplate.h>
 #include <thread>
 #include <condition_variable>
 
@@ -43,24 +41,24 @@ namespace std_mutex_extra {
 template <typename M, typename C>
 class SharedMutexTemplate {
 public:
-	SharedMutexTemplate() : mutex(), nbSharedLocked(0), nbWaitingExclusiveAccess(0), accessQueue(new NoStarvationQueue()) { }
+	SharedMutexTemplate() : nbSharedLocked(0), nbWaitingExclusiveAccess(0), accessQueue(new NoStarvationQueue()) { }
 	~SharedMutexTemplate() = default;
 
-	void lock() {
+	void lock(M &mutex) {
 		std::unique_lock<M> lock(mutex);
 
 		EnsureMemoryAllocated();
 		waitForLockExclusive(lock);
 		lock.release();
 	}
-	void unlock() {
+	void unlock(M &mutex) {
 		if (!accessQueue->headMatchesThreadId())
 			throw std::runtime_error("thread tries to unlock a SharedMutex that it did not lock.");
 		accessQueue->removeFirstElementFromWaitingList();
 		mutex.unlock();
 	}
-	bool try_lock() { return try_lock(TryLockFunction); }
-	void lock_shared() {
+	bool try_lock(M &mutex) { return try_lock(mutex, TryLockFunction); }
+	void lock_shared(M &mutex) {
 		std::unique_lock<M> lock(mutex);
 
 		EnsureMemoryAllocated();
@@ -68,17 +66,38 @@ public:
 			waitForLockShared(lock);
 		markSharedOwnership();
 	}
-	void unlock_shared() {
+	void unlock_shared(M &mutex) {
 		if (nullptr == threadInfo.get() || !threadInfo->hasSharedLocked)
 			throw std::runtime_error("thread tries to unlock a SharedMutex that it did not lock.");
 		std::lock_guard<M> lock(mutex);
 
 		unmarkSharedOwnership();
 	}
-	bool try_lock_shared() { return try_lock_shared(TryLockFunction); }
+	bool try_lock_shared(M &mutex) { return try_lock_shared(mutex, TryLockFunction); }
 
+	template<typename Rep, typename Period>
+	bool try_lock_for(M &mutex, const std::chrono::duration<Rep, Period>& timeout_duration ) {
+		const auto lockFunction = [timeout_duration](M &mutex) { return mutex.try_lock_for(timeout_duration);};
+		return try_lock(mutex, lockFunction);
+	}
+
+	template<typename Clock, typename Duration>
+	bool try_lock_until(M &mutex, const std::chrono::time_point<Clock, Duration>& timeout_time ) {
+		const auto lockFunction = [timeout_time](M &mutex) { return mutex.try_lock_until(timeout_time);};
+		return try_lock(mutex, lockFunction);
+	}
+	template<typename Rep, typename Period>
+	bool try_lock_for_shared(M &mutex, const std::chrono::duration<Rep, Period>& timeout_duration ) {
+		const auto lockFunction = [timeout_duration](M &mutex) { return mutex.try_lock_for(timeout_duration);};
+		return try_lock_shared(mutex, lockFunction);
+	}
+	template<typename Clock, typename Duration>
+	bool try_lock_until_shared(M &mutex, const std::chrono::time_point<Clock, Duration>& timeout_time ) {
+		const auto lockFunction = [timeout_time](M &mutex) { return mutex.try_lock_until(timeout_time);};
+		return try_lock_shared(mutex, lockFunction);
+	}
 protected:
-	bool try_lock(std::function<bool(M &mutex)> lockFunction)
+	bool try_lock(M &mutex, std::function<bool(M &mutex)> lockFunction)
 	{
 		if (!lockFunction(mutex))
 			return false;
@@ -91,7 +110,7 @@ protected:
 		}
 		return canKeepMutex;
 	}
-	bool try_lock_shared(std::function<bool(M &mutex)> lockFunction) {
+	bool try_lock_shared(M &mutex, std::function<bool(M &mutex)> lockFunction) {
 		if (!lockFunction(mutex))
 			return false;
 		const auto queueCanBeAvoidedWithoutStarvation = canBypassAccessQueueForSharedLock();
@@ -153,7 +172,6 @@ private:
 		}
 	};
 
-	M mutex;
 	uint_fast16_t nbSharedLocked;
 	uint_fast16_t nbWaitingExclusiveAccess;
 	std::unique_ptr<NoStarvationQueue> accessQueue;

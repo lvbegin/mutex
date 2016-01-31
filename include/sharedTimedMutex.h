@@ -33,36 +33,32 @@
 
 #include <sharedMutexTemplate.h>
 #include <conditionVariable.h>
+#include <mutex>
 
 namespace std_mutex_extra {
 
-class SharedTimedMutex : public SharedMutexTemplate<std::timed_mutex, std_mutex_extra::condition_variable<std::timed_mutex>> {
+class SharedTimedMutex {
 public:
 	SharedTimedMutex() = default;
 	~SharedTimedMutex() = default;
 
-	template<typename Rep, typename Period>
-	bool try_lock_for( const std::chrono::duration<Rep, Period>& timeout_duration ) {
-		const auto lockFunction = [timeout_duration](std::timed_mutex &mutex) { return mutex.try_lock_for(timeout_duration);};
-		return try_lock(lockFunction);
-	}
-	template<typename Clock, typename Duration>
-	bool try_lock_until( const std::chrono::time_point<Clock, Duration>& timeout_time ) {
-		const auto lockFunction = [timeout_time](std::timed_mutex &mutex) { return mutex.try_lock_until(timeout_time);};
-		return try_lock(lockFunction);
-	}
-	template<typename Rep, typename Period>
-	bool try_lock_for_shared( const std::chrono::duration<Rep, Period>& timeout_duration ) {
-		const auto lockFunction = [timeout_duration](std::timed_mutex &mutex) { return mutex.try_lock_for(timeout_duration);};
-		return try_lock_shared(lockFunction);
-	}
-	template<typename Clock, typename Duration>
-	bool try_lock_until_shared( const std::chrono::time_point<Clock, Duration>& timeout_time ) {
-		const auto lockFunction = [timeout_time](std::timed_mutex &mutex) { return mutex.try_lock_until(timeout_time);};
-		return try_lock_shared(lockFunction);
-	}
+	void lock() { share.lock(mutex); }
+	void unlock() { share.unlock(mutex); }
+	bool try_lock() { return share.try_lock(mutex); }
+	template <typename Rep, typename Period>
+	bool try_lock_for( const std::chrono::duration<Rep, Period>& timeout_duration ) { return share.try_lock_for<Rep, Period>(mutex, timeout_duration); }
+	template <typename Clock, typename Duration>
+	bool try_lock_until( const std::chrono::time_point<Clock, Duration>& timeout_time ) { return share.try_lock_until(mutex, timeout_time); }
+	void lock_shared() { share.lock_shared(mutex); }
+	void unlock_shared() { share.unlock_shared(mutex); }
+	bool try_lock_shared() { return share.try_lock_shared(mutex); }
+	template <typename Rep, typename Period>
+	bool try_lock_for_shared( const std::chrono::duration<Rep, Period>& timeout_duration ) { return share.try_lock_for_shared<Rep, Period>(mutex, timeout_duration); }
+	template <typename Clock, typename Duration>
+	bool try_lock_until_shared( const std::chrono::time_point<Clock, Duration>& timeout_time ) { return share.try_lock_until_shared(mutex, timeout_time); }
 private:
-	static const std::function<bool(std::timed_mutex &mutex)> tryLockForFunction;
+	std::timed_mutex mutex;
+	SharedMutexTemplate<std::timed_mutex, std_mutex_extra::condition_variable<std::timed_mutex>> share;
 };
 
 }

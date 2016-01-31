@@ -31,19 +31,24 @@
 #define RECURSIVE_SHARED_MUTEX_H__
 
 #include <sharedMutex.h>
+#include <recursiveSharedMutexTemplate.h>
 
 namespace std_mutex_extra {
 
-class RecursiveSharedMutex : public  RecursiveMutexTemplate<SharedMutex> {
+class RecursiveSharedMutex {
 public:
-	RecursiveSharedMutex();
-	~RecursiveSharedMutex();
+	RecursiveSharedMutex() : id(RecursiveMutexTemplate::newId()) {}
+	~RecursiveSharedMutex() = default;
 
-	void lock_shared();
-	void unlock_shared();
-	bool try_lock_shared();
+	void lock() { RecursiveSharedMutexTemplate::lock<SharedMutex>(id, mutex); }
+	void unlock() { RecursiveSharedMutexTemplate::unlock<SharedMutex>(id, mutex); }
+	bool try_lock() { return RecursiveSharedMutexTemplate::try_lock<SharedMutex>(id, mutex); }
+	void lock_shared() { RecursiveSharedMutexTemplate::lock_shared<SharedMutex>(id, mutex); }
+	void unlock_shared() { RecursiveSharedMutexTemplate::unlock_shared<SharedMutex>(id, mutex); }
+	bool try_lock_shared() { return RecursiveSharedMutexTemplate::try_lock_shared<SharedMutex>(id, mutex); }
 private:
-	static thread_local std::vector<uint_fast16_t> recursiveSharedAquire;
+	const unsigned int id;
+	SharedMutex mutex;
 };
 
 }

@@ -27,30 +27,10 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SHARED_MUTEX_H__
-#define SHARED_MUTEX_H__
-
-#include <sharedMutexTemplate.h>
-#include <mutex>
+#include <recursiveSharedMutexTemplate.h>
 
 namespace std_mutex_extra {
 
-class SharedMutex {
-public:
-	SharedMutex() = default;
-	~SharedMutex() = default;
-
-	void lock() { sharedMutexManager.lock(mutex); }
-	void unlock() { sharedMutexManager.unlock(mutex); }
-	bool try_lock() { return sharedMutexManager.try_lock(mutex); }
-	void lock_shared() { sharedMutexManager.lock_shared(mutex); }
-	void unlock_shared() { sharedMutexManager.unlock_shared(mutex); }
-	bool try_lock_shared() { return sharedMutexManager.try_lock_shared(mutex); }
-private:
-	std::mutex mutex;
-	SharedMutexTemplate<std::mutex, std::condition_variable> sharedMutexManager;
-};
+thread_local std::vector<uint_fast16_t> RecursiveSharedMutexTemplate::recursiveSharedAquire;
 
 }
-
-#endif
