@@ -53,7 +53,7 @@ public:
 	template <typename Rep, typename Period>
 	bool try_lock_for_shared( const std::chrono::duration<Rep, Period>& timeout_duration ) {  return RecursiveSharedMutexTemplate::try_lock_for_shared<SharedTimedMutex, Rep, Period>(id, mutex, timeout_duration); }
 	template <typename Clock, typename Duration>
-	bool try_lock_until_shared( const std::chrono::time_point<Clock, Duration>& timeout_time ) { return RecursiveSharedMutexTemplate::try_lock_for_shared<SharedTimedMutex, Clock, Duration>(id, mutex, timeout_time); }
+	bool try_lock_until_shared( const std::chrono::time_point<Clock, Duration>& timeout_time ) { return RecursiveSharedMutexTemplate::try_lock_until_shared<SharedTimedMutex, Clock, Duration>(id, mutex, timeout_time); }
 private:
 	const unsigned int id;
 	SharedTimedMutex mutex;
