@@ -27,7 +27,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <recursiveMutexTemplate.h>
+#include <templates/recursiveMutexTemplate.h>
 
 namespace std_mutex_extra {
 

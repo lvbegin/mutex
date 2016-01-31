@@ -2,8 +2,8 @@
 #include <recursiveSharedMutex.h>
 #include <recursiveTimedMutex.h>
 #include <sharedTimedMutex.h>
-#include <sharedMutexTemplate.h>
 #include <conditionVariable.h>
+#include <templates/sharedMutexTemplate.h>
 #include <iostream>
 #include <thread>
 #include <chrono>

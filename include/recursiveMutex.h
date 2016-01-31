@@ -30,8 +30,7 @@
 #ifndef RW_MUTEX_H__
 #define RW_MUTEX_H__
 
-#include <recursiveMutexTemplate.h>
-
+#include <templates/recursiveMutexTemplate.h>
 #include <mutex>
 
 namespace std_mutex_extra {

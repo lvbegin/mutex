@@ -30,7 +30,7 @@
 #ifndef RECURSIVE_TIMED_MUTEX_H__
 #define RECURSIVE_TIMED_MUTEX_H__
 
-#include <recursiveMutexTemplate.h>
+#include <templates/recursiveMutexTemplate.h>
 #include <mutex>
 
 namespace std_mutex_extra {

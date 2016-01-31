@@ -31,7 +31,7 @@
 #define RECURSIVE_SHARED_MUTEX_H__
 
 #include <sharedMutex.h>
-#include <recursiveSharedMutexTemplate.h>
+#include <templates/recursiveSharedMutexTemplate.h>
 
 namespace std_mutex_extra {
 

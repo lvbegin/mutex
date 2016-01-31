@@ -30,7 +30,7 @@
 #ifndef SHARED_MUTEX_H__
 #define SHARED_MUTEX_H__
 
-#include <sharedMutexTemplate.h>
+#include <templates/sharedMutexTemplate.h>
 #include <mutex>
 
 namespace std_mutex_extra {

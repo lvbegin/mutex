@@ -31,8 +31,8 @@
 #ifndef __SHARED_TIMED_MUTEX_H__
 #define __SHARED_TIMED_MUTEX_H__
 
-#include <sharedMutexTemplate.h>
 #include <conditionVariable.h>
+#include <templates/sharedMutexTemplate.h>
 #include <mutex>
 
 namespace std_mutex_extra {
@@ -56,6 +56,7 @@ public:
 	bool try_lock_for_shared( const std::chrono::duration<Rep, Period>& timeout_duration ) { return share.try_lock_for_shared<Rep, Period>(mutex, timeout_duration); }
 	template <typename Clock, typename Duration>
 	bool try_lock_until_shared( const std::chrono::time_point<Clock, Duration>& timeout_time ) { return share.try_lock_until_shared(mutex, timeout_time); }
+
 private:
 	std::timed_mutex mutex;
 	SharedMutexTemplate<std::timed_mutex, std_mutex_extra::condition_variable<std::timed_mutex>> share;
