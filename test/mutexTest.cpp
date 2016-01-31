@@ -12,42 +12,6 @@ typedef std::unique_ptr<std::thread> threadPtr;
 typedef std::atomic<unsigned int> atomicUInt;
 
 template <typename L>
-static void threadUseSharedRecursiveMutex(L *mutex,
-		atomicUInt *inRecursiveCriticalSection,
-		atomicUInt *SharedInCriticalSection,
-		atomicUInt *totalExclusive,
-		atomicUInt *totalShared) {
-
-	for (unsigned int i = 0; i < 10000; i++) {
-		mutex->lock_shared();
-		(*SharedInCriticalSection)++;
-		(*totalShared)++;
-		if (inRecursiveCriticalSection->load() != 0)
-			printf("error in lock_shared\n");
-		mutex->lock_shared();
-		if (inRecursiveCriticalSection->load() != 0)
-			printf("error in lock_shared\n");
-		mutex->lock_shared();
-		if (inRecursiveCriticalSection->load() != 0)
-			printf("error in lock_shared\n");
-		mutex->lock_shared();
-		if (inRecursiveCriticalSection->load() != 0)
-			printf("error in lock_shared\n");
-		mutex->unlock_shared();
-		if (inRecursiveCriticalSection->load() != 0)
-			printf("error in lock_shared\n");
-		mutex->unlock_shared();
-		if (inRecursiveCriticalSection->load() != 0)
-			printf("error in lock_shared\n");
-		mutex->unlock_shared();
-		if (inRecursiveCriticalSection->load() != 0)
-			printf("error in lock_shared\n");
-		(*SharedInCriticalSection)--;
-		mutex->unlock_shared();
-	}
-}
-
-template <typename L>
 static void threadUseRecursiveTryLockMutex(L *mutex, std::function<bool(L *)> tryLock,
 		atomicUInt *inRecursiveCriticalSection,
 		atomicUInt *SharedInCriticalSection,
@@ -303,7 +267,7 @@ static void testSharedRecursiveMutexInParallel() {
 	std::cout << "test recursive shared mutex in parallel" << std::endl;
 
 	testWithTwoTypesOfThreads<std_mutex_extra::RecursiveSharedMutex>(threadUseRecursiveMutex<std_mutex_extra::RecursiveSharedMutex>,
-			threadUseSharedRecursiveMutex<std_mutex_extra::RecursiveSharedMutex>);
+			threadUseRecursiveMutex<std_mutex_extra::RecursiveSharedMutex>);
 }
 
 static void testRecursiveTimedMutexInParallel__try_lock_for() {
