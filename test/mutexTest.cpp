@@ -12,7 +12,7 @@ typedef std::unique_ptr<std::thread> threadPtr;
 typedef std::atomic<unsigned int> atomicUInt;
 
 template <typename L>
-static void threadUseRecursiveTryLockMutex(L *mutex, std::function<bool(L *)> tryLock,
+static void threadUseRecursiveGenericTryLockMutex(L *mutex, std::function<bool(L *)> tryLock,
 		atomicUInt *inRecursiveCriticalSection,
 		atomicUInt *SharedInCriticalSection,
 		atomicUInt *totalExclusive) {
@@ -47,7 +47,7 @@ static void threadUseRecursiveTryLockMutex(L *mutex, std::function<bool(L *)> tr
 }
 
 template <typename L>
-static void threadUseRecursiveTryLockSharedMutex(L *mutex, std::function<bool(L *)> tryLockShared,
+static void threadUseRecursiveGenericTryLockSharedMutex(L *mutex, std::function<bool(L *)> tryLockShared,
 		atomicUInt *inRecursiveCriticalSection,
 		atomicUInt *inSharedCriticalSection,
 		atomicUInt *totalShared) {
@@ -89,7 +89,7 @@ static void threadUseRecursiveMutex(L *mutex,
 		atomicUInt *totalExclusive,
 		atomicUInt *totalShared) {
 	const auto &tryLockFunc = [](L *mutex) { mutex->lock(); return true; };
-	threadUseRecursiveTryLockMutex<L>(mutex, tryLockFunc, inRecursiveCriticalSection, SharedInCriticalSection, totalExclusive);
+	threadUseRecursiveGenericTryLockMutex<L>(mutex, tryLockFunc, inRecursiveCriticalSection, SharedInCriticalSection, totalExclusive);
 }
 
 template <typename L>
@@ -99,7 +99,7 @@ static void threadUseRecursiveTryLockForMutex(L *mutex,
 		atomicUInt *totalExclusive,
 		atomicUInt *totalShared) {
 	const auto &tryLockFunc = [](L *mutex) { return mutex->try_lock_for(std::chrono::seconds(2)); };
-	threadUseRecursiveTryLockMutex<L>(mutex, tryLockFunc, inRecursiveCriticalSection, SharedInCriticalSection, totalExclusive);
+	threadUseRecursiveGenericTryLockMutex<L>(mutex, tryLockFunc, inRecursiveCriticalSection, SharedInCriticalSection, totalExclusive);
 }
 
 template <typename L>
@@ -110,7 +110,7 @@ static void threadUseRecursiveTryLockUntilMutex(L *mutex,
 		atomicUInt *totalShared) {
 	const auto &tryLockFunc = [](L *mutex) { const auto inTwoSeconds = std::chrono::steady_clock::now() + std::chrono::seconds(2);
 												return mutex->try_lock_until(inTwoSeconds); };
-	threadUseRecursiveTryLockMutex<L>(mutex, tryLockFunc, inRecursiveCriticalSection, SharedInCriticalSection, totalExclusive);
+	threadUseRecursiveGenericTryLockMutex<L>(mutex, tryLockFunc, inRecursiveCriticalSection, SharedInCriticalSection, totalExclusive);
 }
 
 template <typename L>
@@ -120,28 +120,38 @@ static void threadUseRecursiveSharedMutex(L *mutex,
 		atomicUInt *totalExclusive,
 		atomicUInt *totalShared) {
 	const auto &tryLockFunc = [](L *mutex) { mutex->lock_shared(); return true; };
-	threadUseRecursiveTryLockSharedMutex<L>(mutex, tryLockFunc, inRecursiveCriticalSection, SharedInCriticalSection, totalShared);
+	threadUseRecursiveGenericTryLockSharedMutex<L>(mutex, tryLockFunc, inRecursiveCriticalSection, SharedInCriticalSection, totalShared);
 }
 
 template <typename L>
-static void threadUseRecursiveTryLockSharedForMutex(L *mutex,
+static void threadUseRecursiveTryLockSharedMutex(L *mutex,
+		atomicUInt *inRecursiveCriticalSection,
+		atomicUInt *SharedInCriticalSection,
+		atomicUInt *totalExclusive,
+		atomicUInt *totalShared) {
+	const auto &tryLockFunc = [](L *mutex) { return mutex->try_lock_shared(); };
+	threadUseRecursiveGenericTryLockSharedMutex<L>(mutex, tryLockFunc, inRecursiveCriticalSection, SharedInCriticalSection, totalShared);
+}
+
+template <typename L>
+static void threadUseRecursiveTryLockForSharedMutex(L *mutex,
 		atomicUInt *inRecursiveCriticalSection,
 		atomicUInt *SharedInCriticalSection,
 		atomicUInt *totalExclusive,
 		atomicUInt *totalShared) {
 	const auto &tryLockFunc = [](L *mutex) { return mutex->try_lock_for_shared(std::chrono::seconds(2)); };
-	threadUseRecursiveTryLockSharedMutex<L>(mutex, tryLockFunc, inRecursiveCriticalSection, SharedInCriticalSection, totalShared);
+	threadUseRecursiveGenericTryLockSharedMutex<L>(mutex, tryLockFunc, inRecursiveCriticalSection, SharedInCriticalSection, totalShared);
 }
 
 template <typename L>
-static void threadUseRecursiveTryLockSharedUntilMutex(L *mutex,
+static void threadUseRecursiveTryLockUntilSharedMutex(L *mutex,
 		atomicUInt *inRecursiveCriticalSection,
 		atomicUInt *SharedInCriticalSection,
 		atomicUInt *totalExclusive,
 		atomicUInt *totalShared) {
 	const auto &tryLockFunc = [](L *mutex) { const auto inTwoSeconds = std::chrono::steady_clock::now() + std::chrono::seconds(2);
 												return mutex->try_lock_until_shared(inTwoSeconds); };
-	threadUseRecursiveTryLockSharedMutex<L>(mutex, tryLockFunc, inRecursiveCriticalSection, SharedInCriticalSection, totalShared);
+	threadUseRecursiveGenericTryLockSharedMutex<L>(mutex, tryLockFunc, inRecursiveCriticalSection, SharedInCriticalSection, totalShared);
 }
 
 template <typename L>
@@ -344,6 +354,13 @@ static void testSharedRecursiveMutexInParallel__lock_shared() {
 			threadUseRecursiveSharedMutex<std_mutex_extra::RecursiveSharedMutex>);
 }
 
+static void testSharedRecursiveMutexInParallel__try_lock_shared() {
+	std::cout << "test recursive shared mutex in parallel (try_lock_shared)" << std::endl;
+
+	testWithTwoTypesOfThreads<std_mutex_extra::RecursiveSharedMutex>(threadUseRecursiveMutex<std_mutex_extra::RecursiveSharedMutex>,
+			threadUseRecursiveTryLockSharedMutex<std_mutex_extra::RecursiveSharedMutex>);
+}
+
 static void testRecursiveTimedMutexInParallel__try_lock_for() {
 	std::cout << "test recursive timed mutex in parallel (with try_lock_for)" << std::endl;
 
@@ -480,6 +497,7 @@ int main()
 	testSharedMutexInParallel__try_locks();
 	testSharedRecursiveMutexInParallel__lock();
 	testSharedRecursiveMutexInParallel__lock_shared();
+	testSharedRecursiveMutexInParallel__try_lock_shared();
 	testRecursiveTimedMutexInParallel__try_lock_for();
 	testRecursiveTimedMutexInParallel__try_lock_until();
 	testSharedTimedMutexInParallel__lock();
