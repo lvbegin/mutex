@@ -36,29 +36,46 @@
 #include <thread>
 #include <condition_variable>
 
+
+#include <iostream> //to remove
 namespace std_mutex_extra {
 
 template <typename M, typename C>
 class SharedMutexTemplate {
+private :
+	enum  class lock_status_t {NOT_LOCKED, LOCKED, SHARED_LOCKED};
 public:
 	SharedMutexTemplate() : nbSharedLocked(0), nbWaitingExclusiveAccess(0), accessQueue(new NoStarvationQueue()) { }
 	~SharedMutexTemplate() = default;
 
 	void lock(M &mutex) {
+		if (!lockStatusEquals(lock_status_t::NOT_LOCKED))
+				throw std::runtime_error("thread tries to lock a SharedMutex that it already locks with shared ownership.");
 		std::unique_lock<M> lock(mutex);
-
 		EnsureMemoryAllocated();
 		waitForLockExclusive(lock);
+		markOwnership();
 		lock.release();
 	}
 	void unlock(M &mutex) {
-		if (!accessQueue->headMatchesThreadId())
+		if (!lockStatusEquals(lock_status_t::LOCKED))
+		{
+			if (lockStatusEquals(lock_status_t::NOT_LOCKED))
+				std::cout  << "unlocked" << std::endl;
+			if (lockStatusEquals(lock_status_t::SHARED_LOCKED))
+				std::cout  << "shared" << std::endl;
+
 			throw std::runtime_error("thread tries to unlock a SharedMutex that it did not lock.");
+		}
 		accessQueue->removeFirstElementFromWaitingList();
+		unmarkOwnership();
 		mutex.unlock();
 	}
 	bool try_lock(M &mutex) { return try_lock(mutex, TryLockFunction); }
 	void lock_shared(M &mutex) {
+		if (!lockStatusEquals(lock_status_t::NOT_LOCKED))
+			throw std::runtime_error("thread tries to lock with shared ownership a SharedMutex that it did not lock.");
+		//check if already locked!
 		std::unique_lock<M> lock(mutex);
 
 		EnsureMemoryAllocated();
@@ -67,20 +84,18 @@ public:
 		markSharedOwnership();
 	}
 	void unlock_shared(M &mutex) {
-		if (nullptr == threadInfo.get() || !threadInfo->hasSharedLocked)
+		if (!lockStatusEquals(lock_status_t::SHARED_LOCKED))
 			throw std::runtime_error("thread tries to unlock a SharedMutex that it did not lock.");
 		std::lock_guard<M> lock(mutex);
 
 		unmarkSharedOwnership();
 	}
 	bool try_lock_shared(M &mutex) { return try_lock_shared(mutex, TryLockFunction); }
-
 	template<typename Rep, typename Period>
 	bool try_lock_for(M &mutex, const std::chrono::duration<Rep, Period>& timeout_duration ) {
 		const auto lockFunction = [timeout_duration](M &mutex) { return mutex.try_lock_for(timeout_duration);};
 		return try_lock(mutex, lockFunction);
 	}
-
 	template<typename Clock, typename Duration>
 	bool try_lock_until(M &mutex, const std::chrono::time_point<Clock, Duration>& timeout_time ) {
 		const auto lockFunction = [timeout_time](M &mutex) { return mutex.try_lock_until(timeout_time);};
@@ -99,6 +114,8 @@ public:
 protected:
 	bool try_lock(M &mutex, std::function<bool(M &mutex)> lockFunction)
 	{
+		if (!lockStatusEquals(lock_status_t::NOT_LOCKED))
+				throw std::runtime_error("thread tries to lock a SharedMutex that it already locks with shared ownership.");
 		if (!lockFunction(mutex))
 			return false;
 		const auto canKeepMutex = (0 == nbSharedLocked) && accessQueue->isEmpty();
@@ -107,10 +124,13 @@ protected:
 		else {
 			EnsureMemoryAllocated();
 			accessQueue->addInWaitingList(threadInfo->waitingQueueElem);
+			markOwnership();
 		}
 		return canKeepMutex;
 	}
 	bool try_lock_shared(M &mutex, std::function<bool(M &mutex)> lockFunction) {
+		if (!lockStatusEquals(lock_status_t::NOT_LOCKED))
+			throw std::runtime_error("thread tries to lock with shared ownership a SharedMutex that it did not lock.");
 		if (!lockFunction(mutex))
 			return false;
 		const auto queueCanBeAvoidedWithoutStarvation = canBypassAccessQueueForSharedLock();
@@ -134,9 +154,9 @@ private:
 	};
 	struct ThreadInfo {
 		struct QueueElem waitingQueueElem;
-		bool hasSharedLocked;
+		lock_status_t status;
 
-		ThreadInfo(std::thread::id id) : waitingQueueElem(id), hasSharedLocked(false) {}
+		ThreadInfo(std::thread::id id) : waitingQueueElem(id), status(lock_status_t::NOT_LOCKED) {}
 		~ThreadInfo() = default;
 	};
 	struct NoStarvationQueue {
@@ -194,16 +214,27 @@ private:
 			threadInfo.reset(new ThreadInfo(std::this_thread::get_id()));
 	}
 	void unmarkSharedOwnership() {
-		threadInfo->hasSharedLocked = false;
+		threadInfo->status = lock_status_t::NOT_LOCKED;
 		nbSharedLocked--;
 		if (0 == nbSharedLocked)
 			accessQueue->notifyFirstElem();
 	}
 	void markSharedOwnership() {
-		threadInfo->hasSharedLocked = true;
+		threadInfo->status = lock_status_t::SHARED_LOCKED;
 		nbSharedLocked++;
 	}
+	void unmarkOwnership() {
+		threadInfo->status = lock_status_t::NOT_LOCKED;
+	}
+	void markOwnership() {
+		threadInfo->status = lock_status_t::LOCKED;
+	}
+	bool lockStatusEquals(lock_status_t status) {
+		return ((nullptr != threadInfo.get() && status == threadInfo->status) ||
+				(nullptr == threadInfo.get() && lock_status_t::NOT_LOCKED == status));
+	}
 	bool canBypassAccessQueueForSharedLock() { return (0 == nbWaitingExclusiveAccess); }
+
 };
 
 template <typename M, typename C>
