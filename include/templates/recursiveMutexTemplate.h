@@ -52,7 +52,7 @@ public:
 	template <typename M>
 	static void unlock(unsigned int instanceId, M & mutex) {
 		if (instanceId >= recursiveAquireCounters.size() || 0 == recursiveAquireCounters[instanceId])
-			throw std::runtime_error("unlock a non-locked lock.");
+			throw std::runtime_error("unlock a non-locked mutex.");
 		recursiveAquireCounters[instanceId]--;
 		if (0 == recursiveAquireCounters[instanceId])
 			mutex.unlock();
