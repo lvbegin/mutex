@@ -46,17 +46,24 @@ public:
 	void unlock() { share.unlock(mutex); }
 	bool try_lock() { return share.try_lock(mutex); }
 	template <typename Rep, typename Period>
-	bool try_lock_for( const std::chrono::duration<Rep, Period>& timeout_duration ) { return share.try_lock_for<Rep, Period>(mutex, timeout_duration); }
+	bool try_lock_for( const std::chrono::duration<Rep, Period>& timeout_duration ) {
+		return share.try_lock_for<Rep, Period>(mutex, timeout_duration);
+	}
 	template <typename Clock, typename Duration>
-	bool try_lock_until( const std::chrono::time_point<Clock, Duration>& timeout_time ) { return share.try_lock_until(mutex, timeout_time); }
+	bool try_lock_until( const std::chrono::time_point<Clock, Duration>& timeout_time ) {
+		return share.try_lock_until(mutex, timeout_time);
+	}
 	void lock_shared() { share.lock_shared(mutex); }
 	void unlock_shared() { share.unlock_shared(mutex); }
 	bool try_lock_shared() { return share.try_lock_shared(mutex); }
 	template <typename Rep, typename Period>
-	bool try_lock_for_shared( const std::chrono::duration<Rep, Period>& timeout_duration ) { return share.try_lock_for_shared<Rep, Period>(mutex, timeout_duration); }
+	bool try_lock_for_shared( const std::chrono::duration<Rep, Period>& timeout_duration ) {
+		return share.try_lock_for_shared<Rep, Period>(mutex, timeout_duration);
+	}
 	template <typename Clock, typename Duration>
-	bool try_lock_until_shared( const std::chrono::time_point<Clock, Duration>& timeout_time ) { return share.try_lock_until_shared(mutex, timeout_time); }
-
+	bool try_lock_until_shared( const std::chrono::time_point<Clock, Duration>& timeout_time ) {
+		return share.try_lock_until_shared(mutex, timeout_time);
+	}
 private:
 	std::timed_mutex mutex;
 	SharedMutexTemplate<std::timed_mutex, std_mutex_extra::condition_variable<std::timed_mutex>> share;
