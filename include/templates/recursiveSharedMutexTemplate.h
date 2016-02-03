@@ -45,7 +45,7 @@ public:
 	template <typename M>
 	static void unlock_shared(unsigned int instanceId, M &mutex) {
 		if (instanceId >= recursiveSharedAquire.size() || 0 == recursiveSharedAquire[instanceId])
-			throw std::runtime_error("unlock a non-locked lock.");
+			throw std::runtime_error("unlock a non-locked mutex.");
 		recursiveSharedAquire[instanceId]--;
 		if (0 == recursiveSharedAquire[instanceId])
 			mutex.unlock_shared();
@@ -74,16 +74,10 @@ private:
 	static bool recursiveTryLockShared(unsigned int instanceId, M &mutex, std::function<bool(M &mutex)> tryLockFunction) {
 		if (instanceId >= recursiveSharedAquire.size())
 			recursiveSharedAquire.resize(instanceId + 1);
-		const auto locked = notAlreadyAquiredShared(instanceId, recursiveSharedAquire, recursiveAquireCounters) ? tryLockFunction(mutex) : true;
+		const auto locked = (0 == recursiveSharedAquire[instanceId]) ? tryLockFunction(mutex) : true;
 		if (locked)
 			recursiveSharedAquire[instanceId]++;
 		return locked;
-	}
-
-	static bool notAlreadyAquiredShared(unsigned int instanceId, std::vector<uint_fast16_t> &recursiveSharedAquire,
-													const std::vector<uint_fast16_t> &recursiveAquire) {
-		return (0 == recursiveSharedAquire[instanceId] &&
-				((instanceId >= recursiveAquire.size()) || 0 == recursiveAquire[instanceId]));
 	}
 };
 
