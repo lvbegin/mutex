@@ -25,6 +25,10 @@ This project contains various implementations of recursive and shared (timed) lo
 
 -recursive timed mutex: The class RecursiveTimedMutex is declared in the file recursiveTimedMutex.h. This class is similar to the class std::recursive_timed_mutex (c++11). The cases where the behaviour of std::recursive_timed_mutex is undefined are replaced by throws of std::runtime_error exception.
 
+- shared timed mutex: The class SharedTimedMutex is declared in the file sharedTimedMutex.h. That class is similar to the class std::shared_timed_mutex (c++14).
+
+-recursive shared timed mutex: The class RecursiveSharedTimedMutex is declared in the file recursiveSharedTimedMutex.h. That class is similar to the class std::recursive_shared_timed_mutex. That class combines the behavior of the shared timed mutex and recursive timed mutex.
+
 ---------------------------------------------
 Compilation
 ---------------------------------------------
