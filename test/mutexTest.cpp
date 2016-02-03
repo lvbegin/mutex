@@ -422,6 +422,34 @@ static void testSharedTimedMutexInParallel__try_lock_until() {
 			threadUseTrySharedMutex<std_mutex_extra::SharedTimedMutex>);
 }
 
+static void testRecursiveSharedMutexInParallel__lock() {
+	std::cout << "test shared mutex in parallel (lock())" << std::endl;
+
+	testWithTwoTypesOfThreads<std_mutex_extra::RecursiveSharedMutex>(threadUseExclusiveMutex<std_mutex_extra::RecursiveSharedMutex>,
+			threadUseRecursiveMutex<std_mutex_extra::RecursiveSharedMutex>);
+}
+
+static void testRecursiveSharedMutexInParallel__try_lock() {
+	std::cout << "test shared mutex in parallel (try_lock())" << std::endl;
+
+	testWithTwoTypesOfThreads<std_mutex_extra::RecursiveSharedMutex>(threadUseExclusiveMutex<std_mutex_extra::RecursiveSharedMutex>,
+			threadUseRecursiveTryLockMutex<std_mutex_extra::RecursiveSharedMutex>);
+}
+
+static void testRecursiveSharedMutexInParallel__lock_shared() {
+	std::cout << "test shared mutex in parallel (lock_shared())" << std::endl;
+
+	testWithTwoTypesOfThreads<std_mutex_extra::RecursiveSharedMutex>(threadUseExclusiveMutex<std_mutex_extra::RecursiveSharedMutex>,
+			threadUseRecursiveSharedMutex<std_mutex_extra::RecursiveSharedMutex>);
+}
+
+static void testRecursiveSharedMutexInParallel__try_lock_shared() {
+	std::cout << "test shared mutex in parallel (try_lock_shared())" << std::endl;
+
+	testWithTwoTypesOfThreads<std_mutex_extra::RecursiveSharedMutex>(threadUseExclusiveMutex<std_mutex_extra::RecursiveSharedMutex>,
+			threadUseRecursiveTryLockSharedMutex<std_mutex_extra::RecursiveSharedMutex>);
+}
+
 static void testRecursiveSharedTimedMutexInParallel__lock() {
 	std::cout << "test shared timed mutex in parallel (lock())" << std::endl;
 
@@ -574,7 +602,11 @@ int main()
 	testSharedTimedMutexInParallel__try_lock_until_shared();
 	testSharedTimedMutexInParallel__try_lock_for();
 	testSharedTimedMutexInParallel__try_lock_until();
+	testRecursiveSharedMutexInParallel__lock();
 	testRecursiveSharedTimedMutexInParallel__lock();
+	testRecursiveSharedMutexInParallel__try_lock();
+	testRecursiveSharedMutexInParallel__lock_shared();
+	testRecursiveSharedMutexInParallel__try_lock_shared();
 	testRecursiveSharedTimedMutexInParallel__try_lock();
 	testRecursiveSharedTimedMutexInParallel__try_lock_for();
 	testRecursiveSharedTimedMutexInParallel__try_lock_until();
