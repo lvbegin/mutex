@@ -346,7 +346,7 @@ static void testSharedMutexInParallel() {
 }
 
 static void testSharedMutexInParallel__try_locks() {
-	std::cout << "test shared mutex in parallel (with try_locks)" << std::endl;
+	std::cout << "test shared mutex in parallel (try_locks)" << std::endl;
 
 	testWithTwoTypesOfThreads<std_mutex_extra::SharedMutex>(threadUseTrySharedMutex<std_mutex_extra::SharedMutex>,
 			threadUseTryExclusiveMutex<std_mutex_extra::SharedMutex>);
@@ -374,14 +374,14 @@ static void testSharedRecursiveMutexInParallel__try_lock_shared() {
 }
 
 static void testRecursiveTimedMutexInParallel__try_lock_for() {
-	std::cout << "test recursive timed mutex in parallel (with try_lock_for)" << std::endl;
+	std::cout << "test recursive timed mutex in parallel (try_lock_for)" << std::endl;
 
 	testWithTwoTypesOfThreads<std_mutex_extra::RecursiveTimedMutex>(threadUseRecursiveTryLockForMutex<std_mutex_extra::RecursiveTimedMutex>,
 			threadUseRecursiveMutex<std_mutex_extra::RecursiveTimedMutex>);
 }
 
 static void testRecursiveTimedMutexInParallel__try_lock_until() {
-	std::cout << "test recursive timed mutex in parallel (with try_lock_until)" << std::endl;
+	std::cout << "test recursive timed mutex in parallel (try_lock_until)" << std::endl;
 
 	testWithTwoTypesOfThreads<std_mutex_extra::RecursiveTimedMutex>(threadUseRecursiveTryLockUntilMutex<std_mutex_extra::RecursiveTimedMutex>,
 			threadUseRecursiveMutex<std_mutex_extra::RecursiveTimedMutex>);
@@ -389,27 +389,27 @@ static void testRecursiveTimedMutexInParallel__try_lock_until() {
 
 
 static void testSharedTimedMutexInParallel__try_lock_for() {
-	std::cout << "test shared timed mutex in parallel (with try_lock_for)" << std::endl;
+	std::cout << "test shared timed mutex in parallel (try_lock_for)" << std::endl;
 
 	testWithTwoTypesOfThreads<std_mutex_extra::SharedTimedMutex>(threadUseTryLockForMutex<std_mutex_extra::SharedTimedMutex>,
 			threadUseTrySharedMutex<std_mutex_extra::SharedTimedMutex>);
 }
 
 static void testSharedTimedMutexInParallel__try_lock_until() {
-	std::cout << "test shared timed mutex in parallel (with try_lock_until)" << std::endl;
+	std::cout << "test shared timed mutex in parallel (try_lock_until)" << std::endl;
 
 	testWithTwoTypesOfThreads<std_mutex_extra::SharedTimedMutex>(threadUseTryLockUntilMutex<std_mutex_extra::SharedTimedMutex>,
 			threadUseTrySharedMutex<std_mutex_extra::SharedTimedMutex>);
 }
 static void testSharedTimedMutexInParallel__lock() {
-	std::cout << "test shared timed mutex in parallel (with lock())" << std::endl;
+	std::cout << "test shared timed mutex in parallel (lock())" << std::endl;
 
 	testWithTwoTypesOfThreads<std_mutex_extra::SharedTimedMutex>(threadUseExclusiveMutex<std_mutex_extra::SharedTimedMutex>,
 			threadUseTrySharedMutex<std_mutex_extra::SharedTimedMutex>);
 }
 
 static void testSharedTimedMutexInParallel__lock_shared() {
-	std::cout << "test shared timed mutex in parallel (with lock_shared)" << std::endl;
+	std::cout << "test shared timed mutex in parallel (lock_shared)" << std::endl;
 
 	testWithTwoTypesOfThreads<std_mutex_extra::SharedTimedMutex>(threadUseTryLockForMutex<std_mutex_extra::SharedTimedMutex>,
 			threadUseSharedMutex<std_mutex_extra::SharedTimedMutex>);
@@ -417,14 +417,14 @@ static void testSharedTimedMutexInParallel__lock_shared() {
 }
 
 static void testSharedTimedMutexInParallel__try_lock_for_shared() {
-	std::cout << "test shared timed mutex in parallel (with try_lock_for_shared)" << std::endl;
+	std::cout << "test shared timed mutex in parallel (try_lock_for_shared)" << std::endl;
 
 	testWithTwoTypesOfThreads<std_mutex_extra::SharedTimedMutex>(threadUseTryLockForMutex<std_mutex_extra::SharedTimedMutex>,
 			threadUseTrySharedMutex<std_mutex_extra::SharedTimedMutex>);
 }
 
 static void testSharedTimedMutexInParallel__try_lock_until_shared() {
-	std::cout << "test shared timed mutex in parallel (with try_lock_until_shared)" << std::endl;
+	std::cout << "test shared timed mutex in parallel (try_lock_until_shared)" << std::endl;
 
 	testWithTwoTypesOfThreads<std_mutex_extra::SharedTimedMutex>(threadUseTryLockUntilSharedMutex<std_mutex_extra::SharedTimedMutex>,
 			threadUseTryExclusiveMutex<std_mutex_extra::SharedTimedMutex>);
