@@ -37,7 +37,6 @@
 #include <condition_variable>
 
 
-#include <iostream> //to remove
 namespace std_mutex_extra {
 
 template <typename M, typename C>
@@ -50,7 +49,7 @@ public:
 
 	void lock(M &mutex) {
 		if (!lockStatusEquals(lock_status_t::NOT_LOCKED))
-				throw std::runtime_error("thread tries to lock a SharedMutex that it already locks with shared ownership.");
+				throw std::runtime_error("thread tries to lock a mutex that it already locks with shared ownership.");
 		std::unique_lock<M> lock(mutex);
 		EnsureMemoryAllocated();
 		waitForLockExclusive(lock);
@@ -59,14 +58,7 @@ public:
 	}
 	void unlock(M &mutex) {
 		if (!lockStatusEquals(lock_status_t::LOCKED))
-		{
-			if (lockStatusEquals(lock_status_t::NOT_LOCKED))
-				std::cout  << "unlocked" << std::endl;
-			if (lockStatusEquals(lock_status_t::SHARED_LOCKED))
-				std::cout  << "shared" << std::endl;
-
-			throw std::runtime_error("thread tries to unlock a SharedMutex that it did not lock.");
-		}
+			throw std::runtime_error("thread tries to unlock a mutex that it did not lock.");
 		accessQueue->removeFirstElementFromWaitingList();
 		unmarkOwnership();
 		mutex.unlock();
@@ -74,7 +66,7 @@ public:
 	bool try_lock(M &mutex) { return try_lock(mutex, TryLockFunction); }
 	void lock_shared(M &mutex) {
 		if (!lockStatusEquals(lock_status_t::NOT_LOCKED))
-			throw std::runtime_error("thread tries to lock with shared ownership a SharedMutex that it did not lock.");
+			throw std::runtime_error("thread tries to lock with shared ownership a mutex that it did not lock.");
 		//check if already locked!
 		std::unique_lock<M> lock(mutex);
 
@@ -83,14 +75,6 @@ public:
 			waitForLockShared(lock);
 		markSharedOwnership();
 	}
-	void unlock_shared(M &mutex) {
-		if (!lockStatusEquals(lock_status_t::SHARED_LOCKED))
-			throw std::runtime_error("thread tries to unlock a SharedMutex that it did not lock.");
-		std::lock_guard<M> lock(mutex);
-
-		unmarkSharedOwnership();
-	}
-	bool try_lock_shared(M &mutex) { return try_lock_shared(mutex, TryLockFunction); }
 	template<typename Rep, typename Period>
 	bool try_lock_for(M &mutex, const std::chrono::duration<Rep, Period>& timeout_duration ) {
 		const auto lockFunction = [timeout_duration](M &mutex) { return mutex.try_lock_for(timeout_duration);};
@@ -101,6 +85,7 @@ public:
 		const auto lockFunction = [timeout_time](M &mutex) { return mutex.try_lock_until(timeout_time);};
 		return try_lock(mutex, lockFunction);
 	}
+	bool try_lock_shared(M &mutex) { return try_lock_shared(mutex, TryLockFunction); }
 	template<typename Rep, typename Period>
 	bool try_lock_for_shared(M &mutex, const std::chrono::duration<Rep, Period>& timeout_duration ) {
 		const auto lockFunction = [timeout_duration](M &mutex) { return mutex.try_lock_for(timeout_duration);};
@@ -111,11 +96,18 @@ public:
 		const auto lockFunction = [timeout_time](M &mutex) { return mutex.try_lock_until(timeout_time);};
 		return try_lock_shared(mutex, lockFunction);
 	}
+	void unlock_shared(M &mutex) {
+		if (!lockStatusEquals(lock_status_t::SHARED_LOCKED))
+			throw std::runtime_error("thread tries to unlock a mutex that it did not lock.");
+		std::lock_guard<M> lock(mutex);
+
+		unmarkSharedOwnership();
+	}
 protected:
 	bool try_lock(M &mutex, std::function<bool(M &mutex)> lockFunction)
 	{
 		if (!lockStatusEquals(lock_status_t::NOT_LOCKED))
-				throw std::runtime_error("thread tries to lock a SharedMutex that it already locks with shared ownership.");
+				throw std::runtime_error("thread tries to lock a mutex that it already locks with shared ownership.");
 		if (!lockFunction(mutex))
 			return false;
 		const auto canKeepMutex = (0 == nbSharedLocked) && accessQueue->isEmpty();
@@ -130,7 +122,7 @@ protected:
 	}
 	bool try_lock_shared(M &mutex, std::function<bool(M &mutex)> lockFunction) {
 		if (!lockStatusEquals(lock_status_t::NOT_LOCKED))
-			throw std::runtime_error("thread tries to lock with shared ownership a SharedMutex that it did not lock.");
+			throw std::runtime_error("thread tries to lock with shared ownership a mutex that it did not lock.");
 		if (!lockFunction(mutex))
 			return false;
 		const auto queueCanBeAvoidedWithoutStarvation = canBypassAccessQueueForSharedLock();
