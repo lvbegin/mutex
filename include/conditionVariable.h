@@ -43,7 +43,7 @@ public:
 		std::unique_lock<std::mutex> conditionLock(condition_mutex);
 		const auto &waitFunction = [this] (std::unique_lock<std::mutex> &conditionLock) { condition.wait(conditionLock); return std::cv_status::no_timeout; };
 		lock.unlock();
-		waitAndUnlockConditionMutex(conditionLock, waitFunction);
+		waitAndUnlockConditionMutex(conditionLock, std::move(waitFunction));
 		lock.lock();
 	}
 	template< class Rep, class Period >
@@ -51,7 +51,7 @@ public:
 		std::unique_lock<std::mutex> conditionLock(condition_mutex);
 		const auto &waitFunction = [this, rel_time] (std::unique_lock<std::mutex> &conditionLock) { return condition.wait_for(conditionLock, rel_time); };
 		lock.unlock();
-		const std::cv_status status = waitAndUnlockConditionMutex(conditionLock, waitFunction);
+		const std::cv_status status = waitAndUnlockConditionMutex(conditionLock, std::move(waitFunction));
 		lock.lock();
 		return status;
 	}
@@ -65,7 +65,7 @@ public:
 		std::unique_lock<std::mutex> conditionLock(condition_mutex);
 		const auto &waitFunction = [this, timeout_time] (std::unique_lock<std::mutex> &conditionLock) { return condition.wait_until(conditionLock, timeout_time); };
 		lock.unlock();
-		const std::cv_status status = waitAndUnlockConditionMutex(conditionLock, waitFunction);
+		const std::cv_status status = waitAndUnlockConditionMutex(conditionLock, std::move(waitFunction));
 		lock.lock();
 		return status;
 	}

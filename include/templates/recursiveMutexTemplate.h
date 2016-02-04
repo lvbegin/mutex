@@ -62,12 +62,12 @@ public:
 	template<typename M, typename Rep, typename Period>
 	static bool try_lock_for(unsigned int instanceId, M &mutex, const std::chrono::duration<Rep, Period>& timeout_duration ) {
 		const auto &TryLockFunction = [timeout_duration](M &mutex) { return mutex.try_lock_for(timeout_duration); };
-		return RecursiveTryLock<M>(instanceId, mutex, TryLockFunction);
+		return RecursiveTryLock<M>(instanceId, mutex, std::move(TryLockFunction));
 	}
 	template<typename M, typename Clock, typename Duration>
 	static bool try_lock_until(unsigned int instanceId, M &mutex, const std::chrono::time_point<Clock, Duration>& timeout_time ) {
 		const auto &TryLockFunction = [timeout_time](M &mutex) { return mutex.try_lock_until(timeout_time); };
-		return RecursiveTryLock<M>(instanceId, mutex, TryLockFunction);
+		return RecursiveTryLock<M>(instanceId, mutex, std::move(TryLockFunction));
 	}
 	static unsigned int newId() {
 		static std::atomic<unsigned int> nbInstances { 0 };

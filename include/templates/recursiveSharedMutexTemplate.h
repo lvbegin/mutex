@@ -40,7 +40,7 @@ public:
 	template <typename M>
 	static void lock_shared(unsigned int instanceId, M &mutex) {
 		const auto &tryLockFunction = [](M &mutex) { mutex.lock_shared(); return true; };
-		recursiveTryLockShared<M>(instanceId, mutex, tryLockFunction);
+		recursiveTryLockShared<M>(instanceId, mutex, std::move(tryLockFunction));
 	}
 	template <typename M>
 	static void unlock_shared(unsigned int instanceId, M &mutex) {
@@ -53,17 +53,17 @@ public:
 	template <typename M>
 	static bool try_lock_shared(unsigned int instanceId, M &mutex) {
 		const auto &tryLockFunction = [](M &mutex) { return mutex.try_lock_shared(); };
-		return recursiveTryLockShared<M>(instanceId, mutex, tryLockFunction);
+		return recursiveTryLockShared<M>(instanceId, mutex, std::move(tryLockFunction));
 	}
 	template<typename M, typename Rep, typename Period>
 	static bool try_lock_for_shared(unsigned int instanceId, M &mutex, const std::chrono::duration<Rep, Period>& timeout_duration ) {
 		const auto &tryLockFunction = [timeout_duration](M &mutex) { return mutex.try_lock_for_shared(timeout_duration); };
-		return recursiveTryLockShared<M>(instanceId, mutex, tryLockFunction);
+		return recursiveTryLockShared<M>(instanceId, mutex, std::move(tryLockFunction));
 	}
 	template<typename M, typename Clock, typename Duration>
 	static bool try_lock_until_shared(unsigned int instanceId, M &mutex, const std::chrono::time_point<Clock, Duration>& timeout_time ) {
 		const auto &tryLockFunction = [timeout_time](M &mutex) { return mutex.try_lock_until_shared(timeout_time); };
-		return recursiveTryLockShared<M>(instanceId, mutex, tryLockFunction);
+		return recursiveTryLockShared<M>(instanceId, mutex, std::move(tryLockFunction));
 	}
 private:
 	const unsigned int id;
