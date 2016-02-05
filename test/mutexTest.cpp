@@ -592,6 +592,31 @@ static void condition_variable__wait_and_notify_all() {
 	std::cout << "test condition variable (wait/notify_all) finished successfully" << std::endl;
 }
 
+static void condition_variable__wait_for_does_not_block()
+{
+	std::cout << "test condition variable (wait_for does not block)" << std::endl;
+
+	std::timed_mutex mutex;
+	std::unique_lock<std::timed_mutex> lock(mutex);
+	std_mutex_extra::condition_variable<std::timed_mutex> condition;
+
+	std::cv_status status = condition.wait_for(lock, std::chrono::seconds(2));
+	if (std::cv_status::no_timeout == status)
+		std::cout << "Error: wait_for() does not return std::cv_status::timeout" << std::endl;
+}
+
+static void condition_variable__wait_until_does_not_block()
+{
+	std::cout << "test condition variable (wait_until does not block)" << std::endl;
+	std::timed_mutex mutex;
+	std::unique_lock<std::timed_mutex> lock(mutex);
+	std_mutex_extra::condition_variable<std::timed_mutex> condition;
+
+	std::cv_status status = condition.wait_until(lock, std::chrono::steady_clock::now() +  std::chrono::seconds(2));
+	if (std::cv_status::no_timeout == status)
+		std::cout << "Error: wait_for() does not return std::cv_status::timeout" << std::endl;
+}
+
 int main()
 {
 	testRecursiveMutexInParallel<std_mutex_extra::RecursiveMutex>();
@@ -625,5 +650,8 @@ int main()
 	condition_variable__wait_and_notify_one();
 	condition_variable__wait_with_pred_and_notify_one();
 	condition_variable__wait_and_notify_all();
+
+	condition_variable__wait_for_does_not_block();
+	condition_variable__wait_until_does_not_block();
 	return 1;
 }
