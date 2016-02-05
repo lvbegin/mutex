@@ -70,11 +70,12 @@ public:
 		return status;
 	}
 	template< class Clock, class Duration >
-	std::cv_status wait_for(std::unique_lock<M> &lock, const std::chrono::time_point<Clock, Duration>& timeout_time, std::function<bool()> pred) {
+	std::cv_status wait_until(std::unique_lock<M> &lock, const std::chrono::time_point<Clock, Duration>& timeout_time, std::function<bool()> pred) {
 		while (!pred()) {
-			if (std::cv_status::timeout == wait_for(lock, timeout_time))
+			if (std::cv_status::timeout == wait_until(lock, timeout_time))
 				return std::cv_status::timeout;
 		}
+		return std::cv_status::no_timeout;
 	}
 
 	void wait(std::unique_lock<M> &lock, std::function<bool()> pred) {
