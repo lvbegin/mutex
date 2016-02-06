@@ -522,17 +522,10 @@ static void threadThatwaitwithPred(std::timed_mutex *mutex, std_mutex_extra::con
 	condition->wait(lock, [nbWaiting]() { return (0 == nbWaiting->load()); });
 }
 
-static void threadThatwait(std::timed_mutex *mutex, std_mutex_extra::condition_variable<std::timed_mutex> *condition,
-		atomicUInt *nbWaiting) {
-	std::unique_lock<std::timed_mutex> lock(*mutex);
-	(*nbWaiting)++;
-	condition->wait(lock);
-}
-
 template <typename M>
 static void threadThatWaitTemplate(std::timed_mutex *mutex,
 		atomicUInt *nbWaiting, std::function<std::cv_status(std::unique_lock<M> &)> waitFunction) {
-	std::unique_lock<std::timed_mutex> lock(*mutex);
+	std::unique_lock<M> lock(*mutex);
 	(*nbWaiting)++;
 	if (std::cv_status::timeout == waitFunction(lock))
 		std::cout << "ERROR: timeout occured while waiting" << std::endl;
@@ -562,21 +555,12 @@ static void condition_variable__wait_with_pred_and_notify_one() {
 }
 
 template <typename M>
-static void test_threadThatwait(M *mutex,
-		atomicUInt *nbWaiting, std::function<std::cv_status(std::unique_lock<M> &)> waitFunction) {
-	std::unique_lock<M> lock(*mutex);
-	(*nbWaiting)++;
-	if (std::cv_status::timeout == waitFunction(lock))
-		std::cout << "ERROR: timeout occured while waiting" << std::endl;
-
-}
-template <typename M>
 static void condition_variable__wait_and_notify_one_template(std_mutex_extra::condition_variable<M> &condition,
 		std::function<std::cv_status(std::unique_lock<M> &)> waitFunction) {
 
 	M mutex;
 	atomicUInt nbWaiting { 0 };
-	threadPtr t(new std::thread(test_threadThatwait<M>, &mutex, &nbWaiting, waitFunction));
+	threadPtr t(new std::thread(threadThatWaitTemplate<M>, &mutex, &nbWaiting, waitFunction));
 	while (0 == nbWaiting) {
 
 	}
