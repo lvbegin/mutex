@@ -529,6 +529,15 @@ static void threadThatwait(std::timed_mutex *mutex, std_mutex_extra::condition_v
 	condition->wait(lock);
 }
 
+template <typename M>
+static void threadThatWaitTemplate(std::timed_mutex *mutex,
+		atomicUInt *nbWaiting, std::function<std::cv_status(std::unique_lock<M> &)> waitFunction) {
+	std::unique_lock<std::timed_mutex> lock(*mutex);
+	(*nbWaiting)++;
+	if (std::cv_status::timeout == waitFunction(lock))
+		std::cout << "ERROR: timeout occured while waiting" << std::endl;
+}
+
 static void condition_variable__wait_with_pred_and_notify_one() {
 
 	std::cout << "test condition variable (wait with pred/notify_one)" << std::endl;
@@ -557,7 +566,9 @@ static void test_threadThatwait(M *mutex,
 		atomicUInt *nbWaiting, std::function<std::cv_status(std::unique_lock<M> &)> waitFunction) {
 	std::unique_lock<M> lock(*mutex);
 	(*nbWaiting)++;
-	waitFunction(lock);
+	if (std::cv_status::timeout == waitFunction(lock))
+		std::cout << "ERROR: timeout occured while waiting" << std::endl;
+
 }
 template <typename M>
 static void condition_variable__wait_and_notify_one_template(std_mutex_extra::condition_variable<M> &condition,
@@ -601,26 +612,25 @@ static void condition_variable__wait_for_and_notify_one() {
 
 static void condition_variable__wait_until_and_notify_one() {
 
-	std::cout << "test condition variable (wait_for/notify_one)" << std::endl;
+	std::cout << "test condition variable (wait_until/notify_one)" << std::endl;
 
 	std_mutex_extra::condition_variable<std::timed_mutex> condition;
 	const auto &waitFunction = [&condition](std::unique_lock<std::timed_mutex> &lock) { return condition.wait_until(lock, std::chrono::steady_clock::now()  +  std::chrono::seconds(2)); };
 	condition_variable__wait_and_notify_one_template<std::timed_mutex>(condition, waitFunction);
 
-	std::cout << "test condition variable (wait_for/notify_one) finished successfully" << std::endl;
+	std::cout << "test condition variable (wait_until/notify_one) finished successfully" << std::endl;
 }
 
-static void condition_variable__wait_and_notify_all() {
+template <typename M>
+static void condition_variable__wait_and_notify_all_template(std_mutex_extra::condition_variable<M> &condition,
+		std::function<std::cv_status(std::unique_lock<M> &)> waitFunction) {
 
-	std::cout << "test condition variable (wait/notify_all)" << std::endl;
-
-	std_mutex_extra::condition_variable<std::timed_mutex> condition;
-	std::timed_mutex mutex;
+	M mutex;
 	atomicUInt nbWaiting { 0 };
 
 	std::vector<threadPtr> threads;
-	threads.push_back(threadPtr(new std::thread(threadThatwait, &mutex, &condition, &nbWaiting)));
-	threads.push_back(threadPtr(new std::thread(threadThatwait, &mutex, &condition, &nbWaiting)));
+	threads.push_back(threadPtr(new std::thread(threadThatWaitTemplate<M>, &mutex, &nbWaiting, waitFunction)));
+	threads.push_back(threadPtr(new std::thread(threadThatWaitTemplate<M>, &mutex, &nbWaiting, waitFunction)));
 	while (2 != nbWaiting) { }
 
 	std::unique_lock<std::timed_mutex> lock(mutex);
@@ -628,7 +638,39 @@ static void condition_variable__wait_and_notify_all() {
 	lock.unlock();
 	for (const auto &t : threads)
 		t->join();
+}
+
+static void condition_variable__wait_and_notify_all() {
+
+	std::cout << "test condition variable (wait/notify_all)" << std::endl;
+
+	std_mutex_extra::condition_variable<std::timed_mutex> condition;
+	const auto &waitFunction = [&condition](std::unique_lock<std::timed_mutex> &lock) {condition.wait(lock); return std::cv_status::no_timeout;};
+	condition_variable__wait_and_notify_all_template<std::timed_mutex>(condition, waitFunction);
+
 	std::cout << "test condition variable (wait/notify_all) finished successfully" << std::endl;
+}
+
+static void condition_variable__wait_for_and_notify_all() {
+
+	std::cout << "test condition variable (wait_for/notify_all)" << std::endl;
+
+	std_mutex_extra::condition_variable<std::timed_mutex> condition;
+	const auto &waitFunction = [&condition](std::unique_lock<std::timed_mutex> &lock) {return condition.wait_for(lock, std::chrono::seconds(2)); };
+	condition_variable__wait_and_notify_all_template<std::timed_mutex>(condition, waitFunction);
+
+	std::cout << "test condition variable (wait_for/notify_all) finished successfully" << std::endl;
+}
+
+static void condition_variable__wait_until_and_notify_all() {
+
+	std::cout << "test condition variable (wait_until/notify_all)" << std::endl;
+
+	std_mutex_extra::condition_variable<std::timed_mutex> condition;
+	const auto &waitFunction = [&condition](std::unique_lock<std::timed_mutex> &lock) {return condition.wait_until(lock, std::chrono::steady_clock::now() + std::chrono::seconds(2)); };
+	condition_variable__wait_and_notify_all_template<std::timed_mutex>(condition, waitFunction);
+
+	std::cout << "test condition variable (wait_until/notify_all) finished successfully" << std::endl;
 }
 
 static void condition_variable__wait_for_does_not_block()
@@ -691,6 +733,8 @@ int main()
 	condition_variable__wait_until_and_notify_one();
 	condition_variable__wait_with_pred_and_notify_one();
 	condition_variable__wait_and_notify_all();
+	condition_variable__wait_for_and_notify_all();
+	condition_variable__wait_until_and_notify_all();
 
 	condition_variable__wait_for_does_not_block();
 	condition_variable__wait_until_does_not_block();
