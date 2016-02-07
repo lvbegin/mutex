@@ -42,32 +42,23 @@ public:
 	void wait(std::unique_lock<M> &lock) {
 		std::unique_lock<std::mutex> conditionLock(condition_mutex);
 		const auto &waitFunction = [this] (std::unique_lock<std::mutex> &conditionLock) { condition.wait(conditionLock); return std::cv_status::no_timeout; };
-		lock.unlock();
-		waitAndUnlockConditionMutex(conditionLock, std::move(waitFunction));
-		lock.lock();
+		doWait(conditionLock, lock, std::move(waitFunction));
 	}
 	template< class Rep, class Period >
 	std::cv_status wait_for(std::unique_lock<M> &lock, const std::chrono::duration<Rep, Period>& rel_time) {
 		std::unique_lock<std::mutex> conditionLock(condition_mutex);
 		const auto &waitFunction = [this, rel_time] (std::unique_lock<std::mutex> &conditionLock) { return condition.wait_for(conditionLock, rel_time); };
-		lock.unlock();
-		const std::cv_status status = waitAndUnlockConditionMutex(conditionLock, std::move(waitFunction));
-		lock.lock();
-		return status;
+		return doWait(conditionLock, lock, std::move(waitFunction));
 	}
 	template< class Rep, class Period >
 	std::cv_status wait_for(std::unique_lock<M> &lock, const std::chrono::duration<Rep, Period>& rel_time, std::function<bool()> pred) {
 		return wait_until(lock, std::chrono::steady_clock::now() + rel_time, std::move(pred));
 	}
-
 	template< class Clock, class Duration >
 	std::cv_status wait_until(std::unique_lock<M> &lock, const std::chrono::time_point<Clock, Duration>& timeout_time) {
 		std::unique_lock<std::mutex> conditionLock(condition_mutex);
 		const auto &waitFunction = [this, timeout_time] (std::unique_lock<std::mutex> &conditionLock) { return condition.wait_until(conditionLock, timeout_time); };
-		lock.unlock();
-		const std::cv_status status = waitAndUnlockConditionMutex(conditionLock, std::move(waitFunction));
-		lock.lock();
-		return status;
+		return doWait(conditionLock, lock, std::move(waitFunction));
 	}
 	template< class Clock, class Duration >
 	std::cv_status wait_until(std::unique_lock<M> &lock, const std::chrono::time_point<Clock, Duration>& timeout_time, std::function<bool()> pred) {
@@ -77,7 +68,6 @@ public:
 		}
 		return std::cv_status::no_timeout;
 	}
-
 	void wait(std::unique_lock<M> &lock, std::function<bool()> pred) {
 		while (!pred())
 			wait(lock);
@@ -93,6 +83,14 @@ public:
 private:
 	std::condition_variable condition;
 	std::mutex condition_mutex;
+
+	std::cv_status doWait(std::unique_lock<std::mutex> &conditionLock, std::unique_lock<M> &lock,
+								std::function<std::cv_status(std::unique_lock<std::mutex> &)> waitFunction) {
+		lock.unlock();
+		const std::cv_status status = waitAndUnlockConditionMutex(conditionLock, std::move(waitFunction));
+		lock.lock();
+		return status;
+	}
 
 	std::cv_status waitAndUnlockConditionMutex(std::unique_lock<std::mutex> &conditionLock,
 								std::function<std::cv_status(std::unique_lock<std::mutex> &)> waitFunction) {
