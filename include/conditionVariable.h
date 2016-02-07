@@ -32,7 +32,6 @@
 
 #include <mutex>
 #include <condition_variable>
-#include <iostream>
 
 namespace std_mutex_extra {
 
