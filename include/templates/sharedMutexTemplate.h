@@ -156,8 +156,8 @@ private:
 
 		NoStarvationQueue() : head(nullptr), tail(nullptr) {}
 		~NoStarvationQueue() = default;
-		bool isEmpty() { return nullptr == head; }
-		bool headMatchesThreadId() { return std::this_thread::get_id() == head->id; }
+		bool isEmpty() const { return nullptr == head; }
+		bool headMatchesThreadId() const { return std::this_thread::get_id() == head->id; }
 		void addInWaitingList(QueueElem &elem) {
 			elem.next = nullptr;
 			if (isEmpty())
@@ -168,9 +168,9 @@ private:
 		}
 		void wait(std::unique_lock<M> &locked, QueueElem &elem, std::function<bool()> condition) {
 			addInWaitingList(elem);
-			elem.mutexCanBeLocked.wait(locked, condition);
+			elem.mutexCanBeLocked.wait(locked, std::move(condition));
 		}
-		void notifyFirstElem() {
+		void notifyFirstElem() const {
 			if (!isEmpty())
 				head->mutexCanBeLocked.notify_one();
 		}
@@ -220,11 +220,11 @@ private:
 	void markOwnership() {
 		threadInfo->status = lock_status_t::LOCKED;
 	}
-	bool lockStatusEquals(lock_status_t status) {
+	bool lockStatusEquals(lock_status_t status) const {
 		return ((nullptr != threadInfo.get() && status == threadInfo->status) ||
 				(nullptr == threadInfo.get() && lock_status_t::NOT_LOCKED == status));
 	}
-	bool canBypassAccessQueueForSharedLock() { return (0 == nbWaitingExclusiveAccess); }
+	bool canBypassAccessQueueForSharedLock() const { return (0 == nbWaitingExclusiveAccess); }
 
 };
 
