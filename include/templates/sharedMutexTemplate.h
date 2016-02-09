@@ -36,13 +36,12 @@
 #include <thread>
 #include <condition_variable>
 
-
 namespace std_mutex_extra {
 
 template <typename M, typename C>
 class SharedMutexTemplate {
 private :
-	enum  class lock_status_t {NOT_LOCKED, LOCKED, SHARED_LOCKED};
+	enum  class lock_status_t { NOT_LOCKED, LOCKED, SHARED_LOCKED };
 public:
 	SharedMutexTemplate() : nbSharedLocked(0), nbWaitingExclusiveAccess(0), accessQueue(new NoStarvationQueue()) { }
 	~SharedMutexTemplate() = default;
@@ -200,7 +199,7 @@ private:
 		accessQueue->wait(lock, threadInfo->waitingQueueElem, [this](){ return accessQueue->headMatchesThreadId(); } );
 		accessQueue->removeFirstElementFromWaitingList();
 	}
-	void EnsureMemoryAllocated() {
+	static void EnsureMemoryAllocated() {
 		if (nullptr == threadInfo.get())
 			threadInfo.reset(new ThreadInfo(std::this_thread::get_id()));
 	}
@@ -214,13 +213,13 @@ private:
 		threadInfo->status = lock_status_t::SHARED_LOCKED;
 		nbSharedLocked++;
 	}
-	void unmarkOwnership() {
+	static void unmarkOwnership() {
 		threadInfo->status = lock_status_t::NOT_LOCKED;
 	}
-	void markOwnership() {
+	static void markOwnership() {
 		threadInfo->status = lock_status_t::LOCKED;
 	}
-	bool lockStatusEquals(lock_status_t status) const {
+	static bool lockStatusEquals(lock_status_t status) {
 		return ((nullptr != threadInfo.get() && status == threadInfo->status) ||
 				(nullptr == threadInfo.get() && lock_status_t::NOT_LOCKED == status));
 	}
