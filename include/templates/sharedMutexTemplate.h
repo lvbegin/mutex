@@ -35,6 +35,11 @@
 #include <memory>
 #include <thread>
 #include <condition_variable>
+#include <atomic>
+
+/* verify that the queue elem is not used afer getting the lock --> there is only one per thread. */
+/* allows to create several shared ! */
+/* threadInfo must become a vector index is id of the mutex */
 
 namespace std_mutex_extra {
 
@@ -102,8 +107,11 @@ public:
 		unmarkSharedOwnership();
 	}
 protected:
-	bool try_lock(M &mutex, std::function<bool(M &mutex)> lockFunction)
-	{
+	static unsigned int newId() {
+		static std::atomic<unsigned int> nbInstances { 0 };
+		return nbInstances++;
+	}
+	bool try_lock(M &mutex, std::function<bool(M &mutex)> lockFunction) {
 		if (!lockStatusEquals(lock_status_t::NOT_LOCKED))
 				throw std::runtime_error("thread tries to lock a mutex that it already locks with shared ownership.");
 		if (!lockFunction(mutex))
