@@ -48,7 +48,7 @@ class SharedMutexTemplate {
 private :
 	enum  class lock_status_t { NOT_LOCKED, LOCKED, SHARED_LOCKED };
 public:
-	SharedMutexTemplate() : nbSharedLocked(0), nbWaitingExclusiveAccess(0), accessQueue(new NoStarvationQueue()) { }
+	SharedMutexTemplate() : id(newId()), nbSharedLocked(0), nbWaitingExclusiveAccess(0), accessQueue(new NoStarvationQueue()) { }
 	~SharedMutexTemplate() = default;
 
 	void lock(M &mutex) {
@@ -142,29 +142,39 @@ protected:
 	}
 
 private:
+	struct ThreadInfo;
+	struct NoStarvationQueue;
+
+	unsigned int id;
+	uint_fast16_t nbSharedLocked;
+	uint_fast16_t nbWaitingExclusiveAccess;
+	std::unique_ptr<NoStarvationQueue> accessQueue;
+	static thread_local std::unique_ptr<ThreadInfo> threadInfo;
+
+	static const std::function<bool(M &mutex)> TryLockFunction;
+
 	struct QueueElem {
-		const std::thread::id id;
 		QueueElem *next;
 		C mutexCanBeLocked;
 
-		QueueElem(std::thread::id id) : id(id), next(nullptr), mutexCanBeLocked() {}
+		QueueElem() : next(nullptr), mutexCanBeLocked() {}
 		~QueueElem() = default;
 	};
 	struct ThreadInfo {
 		struct QueueElem waitingQueueElem;
 		lock_status_t status;
 
-		ThreadInfo(std::thread::id id) : waitingQueueElem(id), status(lock_status_t::NOT_LOCKED) {}
+		ThreadInfo() : waitingQueueElem(), status(lock_status_t::NOT_LOCKED) {}
 		~ThreadInfo() = default;
 	};
 	struct NoStarvationQueue {
 		QueueElem *head;
 		QueueElem *tail;
 
+
 		NoStarvationQueue() : head(nullptr), tail(nullptr) {}
 		~NoStarvationQueue() = default;
 		bool isEmpty() const { return nullptr == head; }
-		bool headMatchesThreadId() const { return std::this_thread::get_id() == head->id; }
 		void addInWaitingList(QueueElem &elem) {
 			elem.next = nullptr;
 			if (isEmpty())
@@ -190,26 +200,20 @@ private:
 		}
 	};
 
-	uint_fast16_t nbSharedLocked;
-	uint_fast16_t nbWaitingExclusiveAccess;
-	std::unique_ptr<NoStarvationQueue> accessQueue;
-	static thread_local std::unique_ptr<ThreadInfo> threadInfo;
-	static const std::function<bool(M &mutex)> TryLockFunction;
-
 	void waitForLockExclusive(std::unique_lock<M> &lock)
 	{
 		nbWaitingExclusiveAccess++;
-		accessQueue->wait(lock, threadInfo->waitingQueueElem, [this](){ return accessQueue->headMatchesThreadId() && 0 == nbSharedLocked; } );
+		accessQueue->wait(lock, threadInfo->waitingQueueElem, [this](){ return &threadInfo->waitingQueueElem == accessQueue->head  && 0 == nbSharedLocked; } );
 		nbWaitingExclusiveAccess--;
 	}
 	void waitForLockShared(std::unique_lock<M> &lock)
 	{
-		accessQueue->wait(lock, threadInfo->waitingQueueElem, [this](){ return accessQueue->headMatchesThreadId(); } );
+		accessQueue->wait(lock, threadInfo->waitingQueueElem, [this](){ return &threadInfo->waitingQueueElem == accessQueue->head; } );
 		accessQueue->removeFirstElementFromWaitingList();
 	}
 	static void EnsureMemoryAllocated() {
 		if (nullptr == threadInfo.get())
-			threadInfo.reset(new ThreadInfo(std::this_thread::get_id()));
+			threadInfo.reset(new ThreadInfo());
 	}
 	void unmarkSharedOwnership() {
 		threadInfo->status = lock_status_t::NOT_LOCKED;
@@ -232,7 +236,6 @@ private:
 				(nullptr == threadInfo.get() && lock_status_t::NOT_LOCKED == status));
 	}
 	bool canBypassAccessQueueForSharedLock() const { return (0 == nbWaitingExclusiveAccess); }
-
 };
 
 template <typename M, typename C>
