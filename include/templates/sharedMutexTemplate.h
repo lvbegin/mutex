@@ -48,7 +48,7 @@ class SharedMutexTemplate {
 private :
 	enum  class lock_status_t { NOT_LOCKED, LOCKED, SHARED_LOCKED };
 public:
-	SharedMutexTemplate() : id(newId()), nbSharedLocked(0), nbWaitingExclusiveAccess(0), accessQueue(new NoStarvationQueue()) { }
+	SharedMutexTemplate() : id(newId()), exclusiveLocked(false), nbSharedLocked(0), nbWaitingExclusiveAccess(0), accessQueue(new NoStarvationQueue()) { }
 	~SharedMutexTemplate() = default;
 
 	void lock(M &mutex) {
@@ -58,12 +58,12 @@ public:
 		EnsureMemoryAllocated();
 		waitForLockExclusive(lock);
 		markOwnership();
+		accessQueue->removeFirstElementFromWaitingList();
 		lock.release();
 	}
 	void unlock(M &mutex) {
 		if (!lockStatusEquals(lock_status_t::LOCKED))
 			throw std::runtime_error("thread tries to unlock a mutex that it did not lock.");
-		accessQueue->removeFirstElementFromWaitingList();
 		unmarkOwnership();
 		mutex.unlock();
 	}
@@ -121,7 +121,6 @@ protected:
 			mutex.unlock();
 		else {
 			EnsureMemoryAllocated();
-			accessQueue->addInWaitingList(threadInfo->waitingQueueElem);
 			markOwnership();
 		}
 		return canKeepMutex;
@@ -147,6 +146,7 @@ private:
 
 	unsigned int id;
 	uint_fast16_t nbSharedLocked;
+	bool exclusiveLocked;
 	uint_fast16_t nbWaitingExclusiveAccess;
 	std::unique_ptr<NoStarvationQueue> accessQueue;
 	static thread_local std::unique_ptr<ThreadInfo> threadInfo;
@@ -196,14 +196,14 @@ private:
 			if (isEmpty())
 				tail = nullptr;
 			else
-				head->mutexCanBeLocked.notify_one();
+				head->mutexCanBeLocked.notify_one(); //useful ?
 		}
 	};
 
 	void waitForLockExclusive(std::unique_lock<M> &lock)
 	{
 		nbWaitingExclusiveAccess++;
-		accessQueue->wait(lock, threadInfo->waitingQueueElem, [this](){ return &threadInfo->waitingQueueElem == accessQueue->head  && 0 == nbSharedLocked; } );
+		accessQueue->wait(lock, threadInfo->waitingQueueElem, [this](){ return &threadInfo->waitingQueueElem == accessQueue->head  && !exclusiveLocked && 0 == nbSharedLocked; } );
 		nbWaitingExclusiveAccess--;
 	}
 	void waitForLockShared(std::unique_lock<M> &lock)
@@ -225,10 +225,13 @@ private:
 		threadInfo->status = lock_status_t::SHARED_LOCKED;
 		nbSharedLocked++;
 	}
-	static void unmarkOwnership() {
+	void unmarkOwnership() {
+		exclusiveLocked = false;
 		threadInfo->status = lock_status_t::NOT_LOCKED;
+		accessQueue->notifyFirstElem(); // OK
 	}
-	static void markOwnership() {
+	void markOwnership() {
+		exclusiveLocked = true;
 		threadInfo->status = lock_status_t::LOCKED;
 	}
 	static bool lockStatusEquals(lock_status_t status) {
