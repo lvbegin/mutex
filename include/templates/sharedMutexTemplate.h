@@ -202,7 +202,6 @@ private:
 	void waitForLockExclusive(std::unique_lock<M> &lock)
 	{
 		nbWaitingExclusiveAccess++;
-		ThreadInfo & t = *threadInfo;
 		if (0 == threadInfo->waitingQueueElem.size())
 			threadInfo->waitingQueueElem.resize(1, threadInfo.get());
 		accessQueue->wait(lock, threadInfo->waitingQueueElem[0], [this](){ return &threadInfo->waitingQueueElem[0] == accessQueue->head  && !exclusiveLocked && 0 == nbSharedLocked; } );
