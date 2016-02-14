@@ -195,8 +195,6 @@ private:
 			head = head->next;
 			if (isEmpty())
 				tail = nullptr;
-			else
-				head->mutexCanBeLocked.notify_one(); //useful ?
 		}
 	};
 
@@ -210,6 +208,8 @@ private:
 	{
 		accessQueue->wait(lock, threadInfo->waitingQueueElem, [this](){ return &threadInfo->waitingQueueElem == accessQueue->head; } );
 		accessQueue->removeFirstElementFromWaitingList();
+		accessQueue->notifyFirstElem();
+
 	}
 	static void EnsureMemoryAllocated() {
 		if (nullptr == threadInfo.get())
@@ -228,7 +228,7 @@ private:
 	void unmarkOwnership() {
 		exclusiveLocked = false;
 		threadInfo->status = lock_status_t::NOT_LOCKED;
-		accessQueue->notifyFirstElem(); // OK
+		accessQueue->notifyFirstElem();
 	}
 	void markOwnership() {
 		exclusiveLocked = true;
