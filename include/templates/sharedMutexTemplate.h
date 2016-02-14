@@ -36,6 +36,7 @@
 #include <thread>
 #include <condition_variable>
 #include <atomic>
+#include <vector>
 
 /* verify that the queue elem is not used afer getting the lock --> there is only one per thread. */
 /* allows to create several shared ! */
@@ -155,22 +156,22 @@ private:
 
 	struct QueueElem {
 		QueueElem *next;
-		C mutexCanBeLocked;
+		ThreadInfo *threadInfo;
 
-		QueueElem() : next(nullptr), mutexCanBeLocked() {}
+		QueueElem(ThreadInfo *threadInfo) : next(nullptr), threadInfo(threadInfo) {}
 		~QueueElem() = default;
 	};
 	struct ThreadInfo {
-		struct QueueElem waitingQueueElem;
 		lock_status_t status;
+		C mutexCanBeLocked;
+		std::vector<struct QueueElem> waitingQueueElem;
 
-		ThreadInfo() : waitingQueueElem(), status(lock_status_t::NOT_LOCKED) {}
+		ThreadInfo() : status(lock_status_t::NOT_LOCKED), mutexCanBeLocked() {}
 		~ThreadInfo() = default;
 	};
 	struct NoStarvationQueue {
 		QueueElem *head;
 		QueueElem *tail;
-
 
 		NoStarvationQueue() : head(nullptr), tail(nullptr) {}
 		~NoStarvationQueue() = default;
@@ -185,11 +186,11 @@ private:
 		}
 		void wait(std::unique_lock<M> &locked, QueueElem &elem, std::function<bool()> condition) {
 			addInWaitingList(elem);
-			elem.mutexCanBeLocked.wait(locked, std::move(condition));
+			elem.threadInfo->mutexCanBeLocked.wait(locked, std::move(condition));
 		}
 		void notifyFirstElem() const {
 			if (!isEmpty())
-				head->mutexCanBeLocked.notify_one();
+				head->threadInfo->mutexCanBeLocked.notify_one();
 		}
 		void removeFirstElementFromWaitingList() {
 			head = head->next;
@@ -201,15 +202,19 @@ private:
 	void waitForLockExclusive(std::unique_lock<M> &lock)
 	{
 		nbWaitingExclusiveAccess++;
-		accessQueue->wait(lock, threadInfo->waitingQueueElem, [this](){ return &threadInfo->waitingQueueElem == accessQueue->head  && !exclusiveLocked && 0 == nbSharedLocked; } );
+		ThreadInfo & t = *threadInfo;
+		if (0 == threadInfo->waitingQueueElem.size())
+			threadInfo->waitingQueueElem.resize(1, threadInfo.get());
+		accessQueue->wait(lock, threadInfo->waitingQueueElem[0], [this](){ return &threadInfo->waitingQueueElem[0] == accessQueue->head  && !exclusiveLocked && 0 == nbSharedLocked; } );
 		nbWaitingExclusiveAccess--;
 	}
 	void waitForLockShared(std::unique_lock<M> &lock)
 	{
-		accessQueue->wait(lock, threadInfo->waitingQueueElem, [this](){ return &threadInfo->waitingQueueElem == accessQueue->head; } );
+		if (0 == threadInfo->waitingQueueElem.size())
+			threadInfo->waitingQueueElem.resize(1, threadInfo.get());
+		accessQueue->wait(lock, threadInfo->waitingQueueElem[0], [this](){ return &threadInfo->waitingQueueElem[0] == accessQueue->head; } );
 		accessQueue->removeFirstElementFromWaitingList();
 		accessQueue->notifyFirstElem();
-
 	}
 	static void EnsureMemoryAllocated() {
 		if (nullptr == threadInfo.get())
