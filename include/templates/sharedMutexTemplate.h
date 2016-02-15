@@ -38,9 +38,7 @@
 #include <atomic>
 #include <vector>
 
-/* verify that the queue elem is not used afer getting the lock --> there is only one per thread. */
-/* allows to create several shared ! */
-/* threadInfo must become a vector index is id of the mutex */
+
 
 namespace std_mutex_extra {
 
@@ -200,41 +198,41 @@ private:
 
 	void waitForLockExclusive(std::unique_lock<M> &lock) {
 		nbWaitingExclusiveAccess++;
-		accessQueue->wait(lock, threadInfo->waitingQueueElem[0], [this](){ return &threadInfo->waitingQueueElem[0] == accessQueue->head  && !exclusiveLocked && 0 == nbSharedLocked; } );
+		accessQueue->wait(lock, threadInfo->waitingQueueElem[id], [this](){ return &threadInfo->waitingQueueElem[id] == accessQueue->head  && !exclusiveLocked && 0 == nbSharedLocked; } );
 		nbWaitingExclusiveAccess--;
 	}
 	void waitForLockShared(std::unique_lock<M> &lock) {
-		accessQueue->wait(lock, threadInfo->waitingQueueElem[0], [this](){ return &threadInfo->waitingQueueElem[0] == accessQueue->head; } );
+		accessQueue->wait(lock, threadInfo->waitingQueueElem[id], [this](){ return &threadInfo->waitingQueueElem[id] == accessQueue->head; } );
 		accessQueue->removeFirstElementFromWaitingList();
 		accessQueue->notifyFirstElem();
 	}
-	static void EnsureMemoryAllocated() {
+	void EnsureMemoryAllocated() {
 		if (nullptr == threadInfo.get())
 			threadInfo.reset(new ThreadInfo());
-		if (0 == threadInfo->waitingQueueElem.size())
-			threadInfo->waitingQueueElem.resize(1, threadInfo.get());
+		if (id >= threadInfo->waitingQueueElem.size())
+			threadInfo->waitingQueueElem.resize(id + 1, threadInfo.get());
 	}
 	void unmarkSharedOwnership() {
-		threadInfo->waitingQueueElem[0].status = lock_status_t::NOT_LOCKED;
+		threadInfo->waitingQueueElem[id].status = lock_status_t::NOT_LOCKED;
 		nbSharedLocked--;
 		if (0 == nbSharedLocked)
 			accessQueue->notifyFirstElem();
 	}
 	void markSharedOwnership() {
-		threadInfo->waitingQueueElem[0].status = lock_status_t::SHARED_LOCKED;
+		threadInfo->waitingQueueElem[id].status = lock_status_t::SHARED_LOCKED;
 		nbSharedLocked++;
 	}
 	void unmarkOwnership() {
 		exclusiveLocked = false;
-		threadInfo->waitingQueueElem[0].status = lock_status_t::NOT_LOCKED;
+		threadInfo->waitingQueueElem[id].status = lock_status_t::NOT_LOCKED;
 		accessQueue->notifyFirstElem();
 	}
 	void markOwnership() {
 		exclusiveLocked = true;
-		threadInfo->waitingQueueElem[0].status = lock_status_t::LOCKED;
+		threadInfo->waitingQueueElem[id].status = lock_status_t::LOCKED;
 	}
-	static bool lockStatusEquals(lock_status_t status) {
-		return ((nullptr != threadInfo.get() && status == threadInfo->waitingQueueElem[0].status) ||
+	bool lockStatusEquals(lock_status_t status) const {
+		return ((nullptr != threadInfo.get() && status == threadInfo->waitingQueueElem[id].status) ||
 				(nullptr == threadInfo.get() && lock_status_t::NOT_LOCKED == status));
 	}
 	bool canBypassAccessQueueForSharedLock() const { return (0 == nbWaitingExclusiveAccess); }
