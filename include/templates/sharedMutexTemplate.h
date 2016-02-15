@@ -165,7 +165,7 @@ private:
 		C mutexCanBeLocked;
 		std::vector<struct QueueElem> waitingQueueElem;
 
-		ThreadInfo() : mutexCanBeLocked() {}
+		ThreadInfo() = default;
 		~ThreadInfo() = default;
 	};
 	struct NoStarvationQueue {
@@ -198,14 +198,12 @@ private:
 		}
 	};
 
-	void waitForLockExclusive(std::unique_lock<M> &lock)
-	{
+	void waitForLockExclusive(std::unique_lock<M> &lock) {
 		nbWaitingExclusiveAccess++;
 		accessQueue->wait(lock, threadInfo->waitingQueueElem[0], [this](){ return &threadInfo->waitingQueueElem[0] == accessQueue->head  && !exclusiveLocked && 0 == nbSharedLocked; } );
 		nbWaitingExclusiveAccess--;
 	}
-	void waitForLockShared(std::unique_lock<M> &lock)
-	{
+	void waitForLockShared(std::unique_lock<M> &lock) {
 		accessQueue->wait(lock, threadInfo->waitingQueueElem[0], [this](){ return &threadInfo->waitingQueueElem[0] == accessQueue->head; } );
 		accessQueue->removeFirstElementFromWaitingList();
 		accessQueue->notifyFirstElem();
