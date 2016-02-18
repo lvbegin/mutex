@@ -38,7 +38,7 @@
 #include <atomic>
 #include <vector>
 
-
+/* exclusive lock flag needed ? */
 
 namespace std_mutex_extra {
 
@@ -47,7 +47,7 @@ class SharedMutexTemplate {
 private :
 	enum  class lock_status_t { NOT_LOCKED, LOCKED, SHARED_LOCKED };
 public:
-	SharedMutexTemplate() : id(newId()), exclusiveLocked(false), nbSharedLocked(0), nbWaitingExclusiveAccess(0), accessQueue(new NoStarvationQueue()) { }
+	SharedMutexTemplate() : id(newId()), nbSharedLocked(0), nbWaitingExclusiveAccess(0), accessQueue(new NoStarvationQueue()) { }
 	~SharedMutexTemplate() = default;
 
 	void lock(M &mutex) {
@@ -144,7 +144,6 @@ private:
 
 	unsigned int id;
 	uint_fast16_t nbSharedLocked;
-	bool exclusiveLocked;
 	uint_fast16_t nbWaitingExclusiveAccess;
 	std::unique_ptr<NoStarvationQueue> accessQueue;
 	static thread_local std::unique_ptr<ThreadInfo> threadInfo;
@@ -198,7 +197,7 @@ private:
 
 	void waitForLockExclusive(std::unique_lock<M> &lock) {
 		nbWaitingExclusiveAccess++;
-		accessQueue->wait(lock, threadInfo->waitingQueueElem[id], [this](){ return &threadInfo->waitingQueueElem[id] == accessQueue->head  && !exclusiveLocked && 0 == nbSharedLocked; } );
+		accessQueue->wait(lock, threadInfo->waitingQueueElem[id], [this](){ return &threadInfo->waitingQueueElem[id] == accessQueue->head && 0 == nbSharedLocked; } );
 		nbWaitingExclusiveAccess--;
 	}
 	void waitForLockShared(std::unique_lock<M> &lock) {
@@ -223,12 +222,10 @@ private:
 		nbSharedLocked++;
 	}
 	void unmarkOwnership() {
-		exclusiveLocked = false;
 		threadInfo->waitingQueueElem[id].status = lock_status_t::NOT_LOCKED;
 		accessQueue->notifyFirstElem();
 	}
 	void markOwnership() {
-		exclusiveLocked = true;
 		threadInfo->waitingQueueElem[id].status = lock_status_t::LOCKED;
 	}
 	bool lockStatusEquals(lock_status_t status) const {
