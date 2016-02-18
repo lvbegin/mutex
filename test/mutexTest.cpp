@@ -508,7 +508,7 @@ static void testRecursiveSharedTimedMutexInParallel__try_lock_for_shared() {
 }
 
 static void testRecursiveSharedTimedMutexInParallel__try_lock_until_shared() {
-	std::cout << "test shared timed mutex in parallel (try_lock_shared())" << std::endl;
+	std::cout << "test shared timed mutex in parallel (try_lock_until_shared())" << std::endl;
 
 	testWithTwoTypesOfThreads<std_mutex_extra::RecursiveSharedTimedMutex>(threadUseExclusiveMutex<std_mutex_extra::RecursiveSharedTimedMutex>,
 			threadUseRecursiveTryLockUntilSharedMutex<std_mutex_extra::RecursiveSharedTimedMutex>);
