@@ -38,8 +38,6 @@
 #include <atomic>
 #include <vector>
 
-/* exclusive lock flag needed ? */
-
 namespace std_mutex_extra {
 
 template <typename M, typename C>
