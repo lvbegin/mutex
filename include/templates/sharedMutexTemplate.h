@@ -200,12 +200,12 @@ private:
 		accessQueue->wait(lock, threadInfo->waitingQueueElem[id], [this](){ return &threadInfo->waitingQueueElem[id] == accessQueue->head && 0 == nbSharedLocked; } );
 		nbWaitingExclusiveAccess--;
 	}
-	void waitForLockShared(std::unique_lock<M> &lock) {
+	void waitForLockShared(std::unique_lock<M> &lock) const {
 		accessQueue->wait(lock, threadInfo->waitingQueueElem[id], [this](){ return &threadInfo->waitingQueueElem[id] == accessQueue->head; } );
 		accessQueue->removeFirstElementFromWaitingList();
 		accessQueue->notifyFirstElem();
 	}
-	void EnsureMemoryAllocated() {
+	void EnsureMemoryAllocated() const {
 		if (nullptr == threadInfo.get())
 			threadInfo.reset(new ThreadInfo());
 		if (id >= threadInfo->waitingQueueElem.size())
@@ -221,11 +221,11 @@ private:
 		threadInfo->waitingQueueElem[id].status = lock_status_t::SHARED_LOCKED;
 		nbSharedLocked++;
 	}
-	void unmarkOwnership() {
+	void unmarkOwnership() const {
 		threadInfo->waitingQueueElem[id].status = lock_status_t::NOT_LOCKED;
 		accessQueue->notifyFirstElem();
 	}
-	void markOwnership() {
+	void markOwnership() const {
 		threadInfo->waitingQueueElem[id].status = lock_status_t::LOCKED;
 	}
 	bool lockStatusEquals(lock_status_t status) const {
