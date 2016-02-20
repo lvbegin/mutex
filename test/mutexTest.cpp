@@ -3,7 +3,6 @@
 #include <recursiveTimedMutex.h>
 #include <sharedTimedMutex.h>
 #include <conditionVariable.h>
-//#include <templates/sharedMutexTemplate.h>
 #include <recursiveSharedTimedMutex.h>
 #include <iostream>
 #include <thread>
@@ -324,7 +323,7 @@ static void testWithTwoTypesOfThreads( std::function<void (M *mutex,
 	atomicUInt totalExclusive { 0 };
 
 	std::vector<threadPtr> threads;
-	for(unsigned int i = 0; i < 5; i++) {
+	for(unsigned int i = 0; i < 100; i++) {
 		threads.push_back(threadPtr(new std::thread(body1, &mutex, &inExclusiveCriticalSection, &inSharedCriticalSection, &totalExclusive, &totalShared)));
 	}
 	for(unsigned int i = 0; i < 100; i++) {
