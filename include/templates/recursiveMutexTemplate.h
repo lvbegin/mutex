@@ -45,10 +45,7 @@ public:
 	~RecursiveMutexTemplate() = delete;
 
 	template <typename M>
-	static void lock(unsigned int instanceId, M & mutex) {
-		static const auto &TryLockFunction = [](M &mutex) { mutex.lock(); return true; };
-		RecursiveTryLock<M>(instanceId, mutex, TryLockFunction);
-	}
+	static void lock(unsigned int instanceId, M & mutex) { RecursiveTryLock<M>(instanceId, mutex, [](M &mutex) { mutex.lock(); return true; }); }
 	template <typename M>
 	static void unlock(unsigned int instanceId, M & mutex) {
 		if (instanceId >= recursiveAquireCounters.size() || 0 == recursiveAquireCounters[instanceId])

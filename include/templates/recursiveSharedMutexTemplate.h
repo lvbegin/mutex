@@ -39,8 +39,7 @@ class RecursiveSharedMutexTemplate : public  RecursiveMutexTemplate {
 public:
 	template <typename M>
 	static void lock_shared(unsigned int instanceId, M &mutex) {
-		const auto &tryLockFunction = [](M &mutex) { mutex.lock_shared(); return true; };
-		recursiveTryLockShared<M>(instanceId, mutex, std::move(tryLockFunction));
+		recursiveTryLockShared<M>(instanceId, mutex, [](M &mutex) { mutex.lock_shared(); return true; });
 	}
 	template <typename M>
 	static void unlock_shared(unsigned int instanceId, M &mutex) {
@@ -52,8 +51,7 @@ public:
 	}
 	template <typename M>
 	static bool try_lock_shared(unsigned int instanceId, M &mutex) {
-		const auto &tryLockFunction = [](M &mutex) { return mutex.try_lock_shared(); };
-		return recursiveTryLockShared<M>(instanceId, mutex, std::move(tryLockFunction));
+		return recursiveTryLockShared<M>(instanceId, mutex, [](M &mutex) { return mutex.try_lock_shared(); });
 	}
 	template<typename M, typename Rep, typename Period>
 	static bool try_lock_for_shared(unsigned int instanceId, M &mutex, const std::chrono::duration<Rep, Period>& timeout_duration ) {
