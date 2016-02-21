@@ -86,7 +86,7 @@ private:
 	std::cv_status doWait(std::unique_lock<std::mutex> &conditionLock, std::unique_lock<M> &lock,
 								std::function<std::cv_status(std::unique_lock<std::mutex> &)> waitFunction) {
 		lock.unlock();
-		const std::cv_status status = waitAndUnlockConditionMutex(conditionLock, std::move(waitFunction));
+		const auto status = waitAndUnlockConditionMutex(conditionLock, std::move(waitFunction));
 		lock.lock();
 		return status;
 	}
@@ -97,7 +97,7 @@ private:
 		 * For that, we must always follow the following order when acquiring mutexes:
 		 * lock the client mutex, then lock the condition mutex.
 		 */
-		const std::cv_status status = waitFunction(conditionLock);
+		const auto status = waitFunction(conditionLock);
 		conditionLock.unlock();
 		return status;
 	}
