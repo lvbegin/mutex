@@ -5,7 +5,7 @@ This file contains the following section:
 ---------------------------------------------
 Project Purpose
 ---------------------------------------------
-This project contains implementations of mutexes that may be missing in some environment. One of the goal is also to provide classes that are as safe as possible. That is, compared to mutexes dvelopped in the STL, undefined behaviour are removed as much as possible. For instance, unlocking a mutex that has not been locked results in throwing an exception.
+This project contains implementations of mutexes that may be missing in some development environment. One of the goal is also to provide classes that are as safe as possible. That is, compared to mutexes dvelopped in the STL, undefined behaviour are removed as much as possible.
 Those classes are designed to compile with c++11 compliant compiler.
 
 ---------------------------------------------
