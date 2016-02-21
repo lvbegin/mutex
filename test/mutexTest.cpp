@@ -681,8 +681,42 @@ static void condition_variable__wait_until_does_not_block()
 		std::cout << "Error: wait_for() does not return std::cv_status::timeout" << std::endl;
 }
 
-int main()
-{
+static void testseveralRecursiveLockInParallel() {
+	std::cout << "test two recursive shared lock in parallel" << std::endl;
+
+#if 0
+	std::vector<threadPtr> threads;
+	threads.push_back(threadPtr(new std::thread(testSharedRecursiveMutexInParallel__lock)));
+	threads.push_back(threadPtr(new std::thread(testSharedRecursiveMutexInParallel__lock)));
+	for (auto &t : threads)
+		t->join();
+#else
+	std_mutex_extra::RecursiveSharedMutex mutex1;
+	std_mutex_extra::RecursiveSharedMutex mutex2;
+	atomicUInt inSharedCriticalSection1 { 0 };
+	atomicUInt inExclusiveCriticalSection1 { 0 };
+	atomicUInt totalShared1 { 0 };
+	atomicUInt totalExclusive1 { 0 };
+	atomicUInt inSharedCriticalSection2 { 0 };
+	atomicUInt inExclusiveCriticalSection2 { 0 };
+	atomicUInt totalShared2 { 0 };
+	atomicUInt totalExclusive2 { 0 };
+
+	std::vector<threadPtr> threads;
+	threads.push_back(threadPtr(new std::thread(threadUseRecursiveMutex<std_mutex_extra::RecursiveSharedMutex> ,&mutex1, &inExclusiveCriticalSection1, &inSharedCriticalSection1, &totalExclusive1, &totalShared1)));
+	threads.push_back(threadPtr(new std::thread(threadUseRecursiveMutex<std_mutex_extra::RecursiveSharedMutex> ,&mutex2, &inExclusiveCriticalSection2, &inSharedCriticalSection2, &totalExclusive2, &totalShared2)));
+
+	for(const auto &t : threads) {
+		t->join();
+	}
+
+	printf("Shared mutex locked %u times\n", totalShared1.load() + totalShared2.load());
+	printf("Exclusive mutex locked %u times\n", totalExclusive1.load() + totalExclusive2.load());
+
+#endif
+}
+
+int main() {
 	testRecursiveMutexInParallel<std_mutex_extra::RecursiveMutex>();
 	testRecursiveMutexInParallel<std_mutex_extra::RecursiveSharedMutex>();
 	testSharedMutexInParallel();
@@ -710,6 +744,7 @@ int main()
 	testRecursiveSharedTimedMutexInParallel__try_lock_shared();
 	testRecursiveSharedTimedMutexInParallel__try_lock_for_shared();
 	testRecursiveSharedTimedMutexInParallel__try_lock_until_shared();
+	testseveralRecursiveLockInParallel();
 
 	condition_variable__wait_and_notify_one();
 	condition_variable__wait_for_and_notify_one();
