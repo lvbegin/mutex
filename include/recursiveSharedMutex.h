@@ -37,7 +37,7 @@ namespace std_mutex_extra {
 
 class RecursiveSharedMutex {
 public:
-	RecursiveSharedMutex() : id(RecursiveMutexTemplate::newId()) {}
+	RecursiveSharedMutex() : id(RecursiveMutexTemplate::newId()) { }
 	~RecursiveSharedMutex() = default;
 
 	void lock() { RecursiveSharedMutexTemplate::lock<SharedMutex>(id, mutex); }

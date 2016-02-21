@@ -37,7 +37,7 @@ namespace std_mutex_extra {
 
 class RecursiveSharedTimedMutex {
 public:
-	RecursiveSharedTimedMutex() : id(RecursiveSharedMutexTemplate::newId()) {}
+	RecursiveSharedTimedMutex() : id(RecursiveSharedMutexTemplate::newId()) { }
 	~RecursiveSharedTimedMutex() = default;
 
 	void lock() {  RecursiveSharedMutexTemplate::lock<SharedTimedMutex>(id, mutex); }
