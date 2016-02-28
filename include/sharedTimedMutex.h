@@ -28,8 +28,8 @@
  */
 
 
-#ifndef __SHARED_TIMED_MUTEX_H__
-#define __SHARED_TIMED_MUTEX_H__
+#ifndef SHARED_TIMED_MUTEX_H__
+#define SHARED_TIMED_MUTEX_H__
 
 #include <conditionVariable.h>
 #include <templates/sharedMutexTemplate.h>
