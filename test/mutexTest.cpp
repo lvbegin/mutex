@@ -7,6 +7,7 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <lockGuard.h>
 
 typedef std::unique_ptr<std::thread> threadPtr;
 typedef std::atomic<unsigned int> atomicUInt;
@@ -700,6 +701,22 @@ static void testseveralRecursiveSharedTimedMutexesInParallel() {
 	testseveralMutexesInParallel<std_mutex_extra::RecursiveSharedTimedMutex>();
 }
 
+
+static void lockUnlock( std::mutex &a, std::mutex &b)
+{
+	std_mutex_extra::lock_guard<std::mutex, std::mutex>(a, b);
+
+}
+
+static void testLockGuard() {
+	std::cout << "lockGard called sequentially" << std::endl;
+
+	std::mutex a;
+	std::mutex b;
+	lockUnlock(a, b);
+	lockUnlock(a, b);
+}
+
 int main() {
 	testSharedMutexInParallel__lock_shared();
 	testSharedMutexInParallel__try_locks();
@@ -740,5 +757,7 @@ int main() {
 
 	condition_variable__wait_for_does_not_block();
 	condition_variable__wait_until_does_not_block();
+
+	testLockGuard();
 	return 1;
 }
