@@ -29,7 +29,9 @@ This project contains various implementations of recursive and shared (timed) mu
 
 This project also contains an implementation of classes that uses mutex:
 
-- condition_variable: this class is similar to the class std::condition_variable but it can be used with mutexes that are instances of classes other than std::mutex. It is defined in the file conditionVariable.h.
+- condition_variable: The class is similar to the class std::condition_variable but it can be used with mutexes that are instances of classes other than std::mutex. It is defined in the file conditionVariable.h.
+
+- lock_guard: The class is similar to the class std::lock_guard and allows locking several mutexes at once avoiding deadlocks (similar to the definition given in c++17). The class is defined in the file lockGuard.h.  
 
 ---------------------------------------------
 Compilation
