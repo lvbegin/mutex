@@ -12,6 +12,13 @@
 typedef std::unique_ptr<std::thread> threadPtr;
 typedef std::atomic<unsigned int> atomicUInt;
 
+static std::atomic<unsigned int> nbErrors { 0 };
+
+static inline void errorOccured(std::string message) {
+	nbErrors++;
+	std::cout << message << std::endl;
+}
+
 template <typename L>
 static void threadUseRecursiveGenericTryLockMutex(L *mutex, std::function<bool(L *)> tryLock,
 		atomicUInt *inRecursiveCriticalSection,
@@ -22,25 +29,25 @@ static void threadUseRecursiveGenericTryLockMutex(L *mutex, std::function<bool(L
 			(*inRecursiveCriticalSection)++;
 			(*totalExclusive)++;
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in when locking mutex (lock())\n");
+				errorOccured("error in when locking mutex (lock())");
 			tryLock(mutex);
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in when locking mutex (lock())\n");
+				errorOccured("error in when locking mutex (lock())");
 			tryLock(mutex);
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in when locking mutex (lock())\n");
+				errorOccured("error in when locking mutex (lock())");
 			tryLock(mutex);
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in when locking mutex (lock())\n");
+				errorOccured("error in when locking mutex (lock())");
 			mutex->unlock();
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in when locking mutex (lock())\n");
+				errorOccured("error in when locking mutex (lock())");
 			mutex->unlock();
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in when locking mutex (lock())\n");
+				errorOccured("error in when locking mutex (lock())");
 			mutex->unlock();
 			if (inRecursiveCriticalSection->load() != 1 || SharedInCriticalSection->load() != 0)
-				printf("error in when locking mutex (lock())\n");
+				errorOccured("error in when locking mutex (lock())");
 			(*inRecursiveCriticalSection)--;
 			mutex->unlock();
 		}
@@ -57,25 +64,25 @@ static void threadUseRecursiveGenericTryLockSharedMutex(L *mutex, std::function<
 			(*inSharedCriticalSection)++;
 			(*totalShared)++;
 			if (0 != inRecursiveCriticalSection->load())
-				printf("error in when locking mutex\n");
+				errorOccured("error in when locking mutex");
 			tryLockShared(mutex);
 			if (0 != inRecursiveCriticalSection->load())
-				printf("error in when locking mutex\n");
+				errorOccured("error in when locking mutex");
 			tryLockShared(mutex);
 			if (0 != inRecursiveCriticalSection->load())
-				printf("error in when locking mutex\n");
+				errorOccured("error in when locking mutex");
 			tryLockShared(mutex);
 			if (0 != inRecursiveCriticalSection->load())
-				printf("error in when locking mutex\n");
+				errorOccured("error in when locking mutex");
 			mutex->unlock_shared();
 			if (0 != inRecursiveCriticalSection->load())
-				printf("error in when locking mutex\n");
+				errorOccured("error in when locking mutex");
 			mutex->unlock_shared();
 			if (0 != inRecursiveCriticalSection->load())
-				printf("error in when locking mutex\n");
+				errorOccured("error in when locking mutex");
 			mutex->unlock_shared();
 			if (0 != inRecursiveCriticalSection->load())
-				printf("error in when locking mutex\n");
+				errorOccured("error in when locking mutex");
 			(*inSharedCriticalSection)--;
 			mutex->unlock_shared();
 		}
@@ -176,7 +183,7 @@ static void threadUseLockSharedMutex(L *mutex, std::function<bool(L *)> lockFunc
 			(*inSharedCriticalSection)++;
 			(*totalShared)++;
 			if (inExclusiveCriticalSection->load() != 0)
-				printf("error in try_lock_for\n");
+				errorOccured("error in try_lock_for");
 			(*inSharedCriticalSection)--;
 			mutex->unlock_shared();
 		}
@@ -233,7 +240,7 @@ static void threadLockMutex(M *mutex, std::function<bool (M*)> lockFunc,
 			(*inExclusiveCriticalSection)++;
 			(*totalExclusive)++;
 			if (1 != inExclusiveCriticalSection->load() || 0 != inSharedCriticalSection->load())
-				printf("error in try_lock_until\n");
+				errorOccured("error in try_lock_until");
 			(*inExclusiveCriticalSection)--;
 			mutex->unlock();
 		}
@@ -504,7 +511,7 @@ static void threadThatWaitTemplate(std::timed_mutex *mutex,
 	std::unique_lock<M> lock(*mutex);
 	(*nbWaiting)++;
 	if (std::cv_status::timeout == waitFunction(lock))
-		std::cout << "ERROR: timeout occured while waiting" << std::endl;
+		errorOccured("ERROR: timeout occured while waiting");
 }
 
 static void condition_variable__wait_with_pred_and_notify_one() {
@@ -643,7 +650,7 @@ static void condition_variable__wait_for_does_not_block()
 
 	std::cv_status status = condition.wait_for(lock, std::chrono::seconds(2));
 	if (std::cv_status::no_timeout == status)
-		std::cout << "Error: wait_for() does not return std::cv_status::timeout" << std::endl;
+		errorOccured("Error: wait_for() does not return std::cv_status::timeout");
 }
 
 static void condition_variable__wait_until_does_not_block()
@@ -655,7 +662,7 @@ static void condition_variable__wait_until_does_not_block()
 
 	std::cv_status status = condition.wait_until(lock, std::chrono::steady_clock::now() +  std::chrono::seconds(2));
 	if (std::cv_status::no_timeout == status)
-		std::cout << "Error: wait_for() does not return std::cv_status::timeout" << std::endl;
+		errorOccured("Error: wait_for() does not return std::cv_status::timeout");
 }
 
 template<typename M>
@@ -759,5 +766,5 @@ int main() {
 	condition_variable__wait_until_does_not_block();
 
 	testLockGuard();
-	return 1;
+	return nbErrors.load();
 }
