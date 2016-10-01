@@ -1,7 +1,8 @@
-
+subdir_include_headersdir=${includedir}/templates
 lib_LIBRARIES=libmutex.a
 libmutex_a_SOURCES=src/recursiveMutexTemplate.cpp src/recursiveSharedMutexTemplate.cpp
-include_HEADERS=include/conditionVariable.h include/lockGuard.h include/recursiveMutex.h include/recursiveSharedMutex.h include/recursiveSharedTimedMutex.h include/recursiveTimedMutex.h include/sharedMutex.h include/sharedTimedMutex.h include/templates/recursiveMutexTemplate.h include/templates/recursiveSharedMutexTemplate.h include/templates/sharedMutexTemplate.h
+include_HEADERS=include/conditionVariable.h include/lockGuard.h include/recursiveMutex.h include/recursiveSharedMutex.h include/recursiveSharedTimedMutex.h include/recursiveTimedMutex.h include/sharedMutex.h include/sharedTimedMutex.h 
+subdir_include_headers_HEADERS=include/templates/recursiveMutexTemplate.h include/templates/recursiveSharedMutexTemplate.h include/templates/sharedMutexTemplate.h
 libmutex_a_CPPFLAGS=-I${srcdir}/include
 TESTS=mutex_check
 check_PROGRAMS=mutex_check
