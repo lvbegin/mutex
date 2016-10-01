@@ -8,6 +8,7 @@
 #include <thread>
 #include <chrono>
 #include <lockGuard.h>
+#include <functional>
 
 typedef std::unique_ptr<std::thread> threadPtr;
 typedef std::atomic<unsigned int> atomicUInt;
@@ -515,9 +516,6 @@ static void threadThatWaitTemplate(std::timed_mutex *mutex,
 }
 
 static void condition_variable__wait_with_pred_and_notify_one() {
-
-	std::cout << "test condition variable (wait with pred/notify_one)" << std::endl;
-
 	std_mutex_extra::condition_variable<std::timed_mutex> condition;
 	std::timed_mutex mutex;
 	atomicUInt nbWaiting { 0 };
@@ -534,7 +532,6 @@ static void condition_variable__wait_with_pred_and_notify_one() {
 	condition.notify_one();
 	lock.unlock();
 	t->join();
-	std::cout << "test condition variable (wait with pred/notify_one) finished successfully" << std::endl;
 }
 
 template <typename M>
@@ -555,37 +552,22 @@ static void condition_variable__wait_and_notify_one_template(std_mutex_extra::co
 }
 
 static void condition_variable__wait_and_notify_one() {
-
-	std::cout << "test condition variable (wait/notify_one)" << std::endl;
-
 	std_mutex_extra::condition_variable<std::timed_mutex> condition;
 	const auto &waitFunction = [&condition](std::unique_lock<std::timed_mutex> &lock) { condition.wait(lock); return std::cv_status::no_timeout;};
 	condition_variable__wait_and_notify_one_template<std::timed_mutex>(condition, waitFunction);
-
-	std::cout << "test condition variable (wait/notify_one) finished successfully" << std::endl;
 }
 
 
 static void condition_variable__wait_for_and_notify_one() {
-
-	std::cout << "test condition variable (wait_for/notify_one)" << std::endl;
-
 	std_mutex_extra::condition_variable<std::timed_mutex> condition;
 	const auto &waitFunction = [&condition](std::unique_lock<std::timed_mutex> &lock) { return condition.wait_for(lock, std::chrono::seconds(2)); };
 	condition_variable__wait_and_notify_one_template<std::timed_mutex>(condition, waitFunction);
-
-	std::cout << "test condition variable (wait_for/notify_one) finished successfully" << std::endl;
 }
 
 static void condition_variable__wait_until_and_notify_one() {
-
-	std::cout << "test condition variable (wait_until/notify_one)" << std::endl;
-
 	std_mutex_extra::condition_variable<std::timed_mutex> condition;
 	const auto &waitFunction = [&condition](std::unique_lock<std::timed_mutex> &lock) { return condition.wait_until(lock, std::chrono::steady_clock::now()  +  std::chrono::seconds(2)); };
 	condition_variable__wait_and_notify_one_template<std::timed_mutex>(condition, waitFunction);
-
-	std::cout << "test condition variable (wait_until/notify_one) finished successfully" << std::endl;
 }
 
 template <typename M>
@@ -608,42 +590,24 @@ static void condition_variable__wait_and_notify_all_template(std_mutex_extra::co
 }
 
 static void condition_variable__wait_and_notify_all() {
-
-	std::cout << "test condition variable (wait/notify_all)" << std::endl;
-
 	std_mutex_extra::condition_variable<std::timed_mutex> condition;
 	const auto &waitFunction = [&condition](std::unique_lock<std::timed_mutex> &lock) {condition.wait(lock); return std::cv_status::no_timeout;};
 	condition_variable__wait_and_notify_all_template<std::timed_mutex>(condition, waitFunction);
-
-	std::cout << "test condition variable (wait/notify_all) finished successfully" << std::endl;
 }
 
 static void condition_variable__wait_for_and_notify_all() {
-
-	std::cout << "test condition variable (wait_for/notify_all)" << std::endl;
-
 	std_mutex_extra::condition_variable<std::timed_mutex> condition;
 	const auto &waitFunction = [&condition](std::unique_lock<std::timed_mutex> &lock) {return condition.wait_for(lock, std::chrono::seconds(2)); };
 	condition_variable__wait_and_notify_all_template<std::timed_mutex>(condition, waitFunction);
-
-	std::cout << "test condition variable (wait_for/notify_all) finished successfully" << std::endl;
 }
 
 static void condition_variable__wait_until_and_notify_all() {
-
-	std::cout << "test condition variable (wait_until/notify_all)" << std::endl;
-
 	std_mutex_extra::condition_variable<std::timed_mutex> condition;
 	const auto &waitFunction = [&condition](std::unique_lock<std::timed_mutex> &lock) {return condition.wait_until(lock, std::chrono::steady_clock::now() + std::chrono::seconds(2)); };
 	condition_variable__wait_and_notify_all_template<std::timed_mutex>(condition, waitFunction);
-
-	std::cout << "test condition variable (wait_until/notify_all) finished successfully" << std::endl;
 }
 
-static void condition_variable__wait_for_does_not_block()
-{
-	std::cout << "test condition variable (wait_for does not block)" << std::endl;
-
+static void condition_variable__wait_for_does_not_block() {
 	std::timed_mutex mutex;
 	std::unique_lock<std::timed_mutex> lock(mutex);
 	std_mutex_extra::condition_variable<std::timed_mutex> condition;
@@ -655,7 +619,6 @@ static void condition_variable__wait_for_does_not_block()
 
 static void condition_variable__wait_until_does_not_block()
 {
-	std::cout << "test condition variable (wait_until does not block)" << std::endl;
 	std::timed_mutex mutex;
 	std::unique_lock<std::timed_mutex> lock(mutex);
 	std_mutex_extra::condition_variable<std::timed_mutex> condition;
@@ -716,12 +679,20 @@ static void lockUnlock( std::mutex &a, std::mutex &b)
 }
 
 static void testLockGuard() {
-	std::cout << "lockGard called sequentially" << std::endl;
-
 	std::mutex a;
 	std::mutex b;
 	lockUnlock(a, b);
 	lockUnlock(a, b);
+}
+
+static void do_test(std::function<void(void)> theTest, std::string testName)
+{
+	std::cout << testName << std::endl;
+	const unsigned int nbErrorsBefore = nbErrors.load();
+	theTest();
+	std::cout << testName << ((nbErrorsBefore == nbErrors.load()) ?
+															" finished successfully" :
+															" failed") << std::endl;
 }
 
 int main() {
@@ -754,17 +725,17 @@ int main() {
 	testseveralRecursiveSharedMutexesInParallel();
 	testseveralRecursiveSharedTimedMutexesInParallel();
 
-	condition_variable__wait_and_notify_one();
-	condition_variable__wait_for_and_notify_one();
-	condition_variable__wait_until_and_notify_one();
-	condition_variable__wait_with_pred_and_notify_one();
-	condition_variable__wait_and_notify_all();
-	condition_variable__wait_for_and_notify_all();
-	condition_variable__wait_until_and_notify_all();
+	do_test(condition_variable__wait_and_notify_one, "test condition variable (wait/notify_one)");
+	do_test(condition_variable__wait_for_and_notify_one, "test condition variable (wait_for/notify_one)");
+	do_test(condition_variable__wait_until_and_notify_one, "test condition variable (wait_until/notify_one)");
+	do_test(condition_variable__wait_with_pred_and_notify_one, "test condition variable (wait with pred/notify_one)");
+	do_test(condition_variable__wait_and_notify_all, "test condition variable (wait/notify_all)");
+	do_test(condition_variable__wait_for_and_notify_all, "test condition variable (wait_for/notify_all)");
+	do_test(condition_variable__wait_until_and_notify_all, "test condition variable (wait_until/notify_all)");
 
-	condition_variable__wait_for_does_not_block();
-	condition_variable__wait_until_does_not_block();
+	do_test(condition_variable__wait_for_does_not_block, "test condition variable (wait_for does not block)");
+	do_test(condition_variable__wait_until_does_not_block, "test condition variable (wait_until does not block)");
 
-	testLockGuard();
+	do_test(testLockGuard, "lockGard called sequentially");
 	return nbErrors.load();
 }
