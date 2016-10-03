@@ -18,7 +18,7 @@ AX_CXX_COMPILE_STDCXX_11([noext], [mandatory])
 
 # Checks for header files.
 AC_CHECK_HEADERS([stdint.h])
-
+AC_CHECK_LIB(pthread, pthread_create)
 # Checks for typedefs, structures, and compiler characteristics.
 AC_CHECK_HEADER_STDBOOL
 
